@@ -1,0 +1,97 @@
+{
+  "$id": "fhkb_validation_policy_v1",
+  "title": "FaultDx FHKB Validation Policy",
+  "version": "1.0",
+  "date": "2026-07-23",
+  "status": "FROZEN",
+  "owner": "data_contract_engineer",
+  "case_contract_ref": "fhkb_case_v1",
+  "schema_ref": "../case/fhkb_case_v1.schema.json",
+  "knowledge_asset": "FHKB",
+  "description": "Defines whether an FHKB case package or case record is accepted as a candidate reference, held for review, or rejected.",
+  "validator_policy": {
+    "statuses": [
+      "accepted_candidate",
+      "candidate_review",
+      "rejection"
+    ],
+    "required_package_fields_ref": "fhkb_case_v1.ingestion_contract.package_required_fields",
+    "required_record_fields_ref": "fhkb_case_v1.ingestion_contract.record_required_fields",
+    "required_record_values_ref": "fhkb_case_v1.ingestion_contract.required_values",
+    "allowed_case_types_ref": "fhkb_case_v1.ingestion_contract.allowed_case_types",
+    "field_allowlist": [
+      "case_id",
+      "case_version",
+      "derivation_rule_version",
+      "source_id",
+      "source_version",
+      "source_record_ids",
+      "source_refs",
+      "case_type",
+      "case_status",
+      "route_target",
+      "publication_status",
+      "serving_safe",
+      "review_maturity",
+      "phenomenon",
+      "candidate_causes",
+      "candidate_actions",
+      "temporal_context",
+      "equipment_context",
+      "evidence_summary",
+      "field_authority",
+      "legacy_context",
+      "warnings"
+    ],
+    "blocked_field_names": [
+      "confirmed_diagnosis",
+      "reviewed_mapping_record",
+      "promotion_decision_id",
+      "raw_work_order",
+      "raw_customer_text",
+      "secret",
+      "credential",
+      "absolute_path",
+      "debug_payload"
+    ],
+    "blocked_source_patterns": [
+      "data/processed/aggregates",
+      "data\\processed\\aggregates",
+      "unnamed",
+      "directory_scan"
+    ],
+    "rejection_conditions": [
+      "source is unnamed or not registered in the governed source boundary",
+      "producer scans an aggregate directory instead of consuming a named artifact",
+      "missing canonical case identity or record-level source references",
+      "case_id does not match the governed source identity tuple",
+      "route_target is not rag_case_pool",
+      "publication_status is not candidate_only",
+      "serving_safe is not true at package level",
+      "no allowed serving-safe retrieval text is present",
+      "blocked field is present",
+      "record claims reviewed or confirmed diagnosis",
+      "record attempts to create or promote a MappingRecord"
+    ],
+    "candidate_review_conditions": [
+      "source refs conflict",
+      "case identity collides with non-equivalent content",
+      "sensitive free text requires domain review",
+      "source route eligibility is unresolved"
+    ],
+    "diagnosis_promotion": "forbidden",
+    "mapping_record_promotion": "forbidden",
+    "promotion_in_place": false
+  },
+  "compatibility": {
+    "legacy_policy": "route_c_source_boundary_v1",
+    "migration": [
+      "Keep route_c_source_boundary_v1 active until this policy is frozen and runtime adoption is approved.",
+      "Register each FHKB source explicitly; never replace registration with a wildcard or directory scan.",
+      "Add producer-side package validation before the existing Route C projection.",
+      "Run consumer validation with the existing rag_case_pool to case_retrieval mapping.",
+      "Bind runtime only after affected-consumer approval."
+    ],
+    "rollback": "Continue using the named sources and projection rules in route_c_source_boundary_v1 until the FHKB pair is reviewed and accepted."
+  }
+}

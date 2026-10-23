@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faultdx/contracts/evaluation/route_a_expert_ranking_input_v1.schema.json",
+  "title": "Route A expert-ranking evaluation input",
+  "description": "DRAFT graph-independent ranking input. Reviewed labels require independent expert review; assumed labels remain provisional.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "metric_policy", "candidate", "cases"],
+  "properties": {
+    "schema_version": {"const": "route_a_expert_ranking_input_v1"},
+    "metric_policy": {"$ref": "#/$defs/metric_policy"},
+    "candidate": {"type": "object", "additionalProperties": false, "required": ["candidate_id", "graph_version", "snapshot_id", "data_maturity", "config_digest"], "properties": {"candidate_id": {"type": "string"}, "graph_version": {"type": "string"}, "snapshot_id": {"type": "string"}, "data_maturity": {"enum": ["assumed_label_provisional", "provisional", "reviewed"]}, "config_digest": {"type": "string"}}},
+    "cases": {"type": "array", "items": {"$ref": "#/$defs/case"}}
+  },
+  "$defs": {
+    "metric_policy": {
+      "type": "object",
+      "description": "FROZEN V2-TASK001 ranking metric policy. A differing policy requires a new schema version.",
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "ranking_depth",
+        "primary_metric",
+        "cause_recall_cutoffs",
+        "pair_recall_cutoffs",
+        "mrr_cutoff",
+        "domain_correctness_label_maturities",
+        "abstention_safety_gate",
+        "composite_score"
+      ],
+      "properties": {
+        "policy_version": {"const": "route_a_expert_ranking_metrics_v1"},
+        "ranking_depth": {"const": 5},
+        "primary_metric": {"const": "cause_action_pair_recall_at_3"},
+        "cause_recall_cutoffs": {"const": [1, 3, 5]},
+        "pair_recall_cutoffs": {"const": [1, 3, 5]},
+        "mrr_cutoff": {"const": 5},
+        "domain_correctness_label_maturities": {
+          "const": ["reviewed", "adjudicated"]
+        },
+        "abstention_safety_gate": {
+          "const": "required_abstention_requires_no_ranked_results;not_expected_abstention_is_failure"
+        },
+        "composite_score": {"const": "prohibited"}
+      }
+    },
+    "pair": {"type": "object", "additionalProperties": false, "required": ["cause_id", "action_id"], "properties": {"cause_id": {"type": "string", "minLength": 1}, "action_id": {"type": "string", "minLength": 1}}},
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rank", "cause_id", "action_ids"],
+      "properties": {
+        "rank": {"type": "integer", "minimum": 1, "maximum": 5},
+        "cause_id": {"type": "string", "minLength": 1},
+        "action_ids": {"type": "array",
+        "items": {"type": "string"}, "uniqueItems": true},
+        "score": {"type": "number"}
+        }
+      },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "scenario_id", "partition", "label_maturity", "expected", "ranked_results", "abstained"],
+      "properties": {
+        "case_id": {"type": "string"},
+        "scenario_id": {"type": "string"},
+        "partition": {"enum": ["development", "validation", "blind"]},
+        "label_maturity": {"enum": ["assumed_label_provisional", "provisional", "reviewed", "adjudicated"]},
+        "expected": {"type": "object", "additionalProperties": false, "required": ["abstention", "acceptable_cause_ids", "acceptable_action_pairs"], "properties": {"abstention": {"enum": ["required", "allowed", "not_expected"]}, "acceptable_cause_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}, "acceptable_action_pairs": {"type": "array", "items": {"$ref": "#/$defs/pair"}, "uniqueItems": true}}},
+        "ranked_results": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {"$ref": "#/$defs/result"}
+        },
+        "abstained": {"type": "boolean"}
+        }
+      }
+  }
+}

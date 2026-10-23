@@ -1,0 +1,13 @@
+enabled: true
+
+provider:
+  type: ollama
+  host: http://localhost:11434
+  model: nomic-embed-text:latest
+  batch_size: 64
+  timeout_sec: 120
+  cache_path: .cache/diagnostic_asset_bridge/ollama_embeddings.json
+
+candidate_generation:
+  top_k: 3
+  min_similarity: 0.35

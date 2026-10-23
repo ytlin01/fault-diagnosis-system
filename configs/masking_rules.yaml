@@ -1,0 +1,1225 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# FaultDx v2 Data-Line — Masking Rules Configuration
+# Masking-rules revision: 2 (independent of the program lifecycle phase)
+# Method provenance: inherited from the Phase 1/N phase1_v1 baseline
+#
+# Three-view strategy:
+#   raw               → data/raw/                         (immutable input)
+#   canonical         → data/processed/canonical/         (governed internal use)
+#   serving candidate → data/processed/serving/           (requires separate approval)
+# Successful masking does not grant serving approval, Route A truth, KG
+# eligibility, or gold-label maturity.
+#
+# Field classification:
+#   A — must de-identify   (PII, DRI, contact info, unique device serial)
+#   B — retain but generalize (timestamps, vendor names, line granularity)
+#   C — must retain        (diagnostic value: EC, phenomenon, cause, action …)
+# ──────────────────────────────────────────────────────────────────────────────
+
+program_identity:
+  lifecycle: phase_2
+  data_line: v2
+  method_provenance: phase1_v1_inherited
+
+# Compatibility field consumed as masking_rules_version by existing manifests
+# and governance events. It is a ruleset revision, not the program phase.
+version: 2
+
+# ── Global field classification ──────────────────────────────────────────────
+# These lists define the *default* level when a column is not explicitly mapped
+# in a source-specific rule block. Source rules override globals.
+
+field_classification:
+  A_must_deidentify:
+    - customer_name
+    - phone_number
+    - email
+    - employee_id
+    - device_serial_number       # unique serial → hash in canonical, drop in serving
+
+  B_retain_generalize:
+    - timestamp_precise          # → generalize to date or shift
+    - vendor_name                # → generalize to vendor type / VENDOR_A/B
+    - line_id                    # → generalize to station level
+
+  C_must_retain:
+    - error_code
+    - phenomenon
+    - cause
+    - action
+    - station
+    - downtime_minutes
+    - risk
+    - sop_reference
+    - classify
+    - QPL
+
+# ── Default actions per level & view ─────────────────────────────────────────
+# Each level defines what happens in canonical vs serving view.
+
+level_defaults:
+  A:
+    canonical: tokenize          # deterministic pseudonym, reversible with salt
+    serving: drop                # removed entirely from serving output
+  B:
+    canonical: passthrough       # keep original in canonical
+    serving: generalize          # coarsen in serving
+  C:
+    canonical: passthrough
+    serving: passthrough
+
+# ── Tokenizer / hash settings ────────────────────────────────────────────────
+# Salt is loaded at runtime from env var FAULTDX_MASKING_SALT.
+# If salt is absent, the pipeline MUST refuse to run (fail-safe).
+
+tokenizer:
+  algorithm: sha256
+  salt_env_var: FAULTDX_MASKING_SALT
+  prefix: "TOK_"               # tokenized values shown as TOK_<hash[:12]>
+  hash_length: 12              # truncated hash length for readability
+
+# ── Source-specific column rules ─────────────────────────────────────────────
+# Each source declares:
+#   file_patterns    — glob patterns matched under data/raw/
+#   require_all_file_patterns
+#                    — true: every pattern must match at least one local file
+#   sheet_selector   — how to pick sheets from Excel workbooks:
+#       mode: index   value: 0 or [1,2,3]         # 0-based sheet index(es)
+#       mode: name    value: "Sheet1" or ["L1","L2"]  # exact sheet name(s)
+#       mode: pattern value: "L*"                  # fnmatch glob on sheet names
+#       mode: all                                  # every sheet in workbook
+#   combine_sheets   — true: merge rows from all selected sheets (default: false)
+#                      requires identical column sets; tolerates different column order
+#   header_row       — 0-based row index of the header (default: 0)
+#                      0 = first row, 1 = second row, etc.
+#                      use 'inspect' command to find the correct row
+#   skip_rows_after_header — rows to skip between header and data (default: 0)
+#                      e.g. unit rows, separator rows
+#   column_aliases   — {rule_name: [alias1, alias2, …]} for header normalization
+#   column_rules     — per-column overrides (column name → rule)
+#
+# Rule fields:
+#   level:    A | B | C
+#   canonical_action: keep | passthrough | drop | redact | tokenize | hash | mask | rename | generalize
+#   serving_action:   keep | passthrough | drop | redact | tokenize | hash | mask | rename | generalize
+#   generalize_method: (optional) to_month | to_date | to_shift | to_type
+#   type_mapping: (optional, for to_type) {default: "[TO_TYPE]", values: {raw_value: type_value}}
+#   rename_to: (optional) output column name
+#   mask_config: (optional) {mask_char: '*', keep_prefix: 1, keep_suffix: 0}
+#   review_flag: (optional) true — marks column for human review
+#   note: (optional) human-readable comment
+
+# ── Shared YAML anchors (reusable across sources) ───────────────────────────
+# These are NOT sources. They define shared column_aliases and column_rules
+# that multiple Y25 Downtime sources reference via *y25_dt_aliases / *y25_dt_rules.
+
+_anchors:
+  y25_dt_aliases: &y25_dt_aliases
+    "異常分類":
+      - "异常分类"
+      - "异常分類"
+    "異常描敘":
+      - "异常描述"
+      - "異常描述"
+      - "异常描敘"
+    "線體名稱":
+      - "线体名称"
+      - "線體名称"
+    "工站名稱":
+      - "工站名称"
+    "維修動作":
+      - "维修动作"
+    "樓層":
+      - "楼层"
+    "DT(Mins)":
+      - "DT（Mins）"
+      - "DT (Mins)"
+      - "DT（mins）"
+    "異常開始時間（time）":
+      - "异常开始时间(time)"
+      - "異常開始時間(time)"
+      - "异常开始时间（time）"
+    "異常結束時間（time）":
+      - "异常结束时间(time)"
+      - "異常結束時間(time)"
+      - "异常结束时间（time）"
+
+  y25_dt_rules: &y25_dt_rules
+    "序號":
+      level: C
+      canonical_action: passthrough
+      serving_action: passthrough
+    "Date":
+      level: B
+      canonical_action: passthrough
+      serving_action: generalize
+      generalize_method: to_month
+    "shift":
+      level: C
+      canonical_action: passthrough
+      serving_action: passthrough
+    "樓層":
+      level: B
+      canonical_action: passthrough
+      serving_action: drop
+      note: "floor info — not needed in serving"
+    "線體名稱":
+      level: B
+      canonical_action: passthrough
+      serving_action: generalize
+      generalize_method: to_type
+      type_mapping:
+        default: "[TO_TYPE]"
+        values: {
+          "L1": "LINE_L1",
+          "L2": "LINE_L2",
+          "L3": "LINE_L3",
+          "L4": "LINE_L4",
+          "L5": "LINE_L5"
+        }
+      note: "generalize line to type level"
+    "工站名稱":
+      level: C
+      canonical_action: passthrough
+      serving_action: passthrough
+    "Vendor":
+      level: B
+      canonical_action: passthrough
+      serving_action: generalize
+      generalize_method: to_type
+      type_mapping:
+        default: "[TO_TYPE]"
+        values: {
+          "Lus": "Device_Vendor"
+        }
+    "異常分類":
+      level: C
+      canonical_action: passthrough
+      serving_action: passthrough
+    "異常描敘":
+      level: C
+      canonical_action: passthrough
+      serving_action: passthrough
+      note: "free text — may embed names; flag for review_before_external_use"
+      review_flag: true
+    "原因":
+      level: C
+      canonical_action: passthrough
+      serving_action: passthrough
+      review_flag: true
+    "維修動作":
+      level: C
+      canonical_action: passthrough
+      serving_action: passthrough
+    "異常開始時間（time）":
+      level: B
+      canonical_action: passthrough
+      serving_action: drop
+    "異常結束時間（time）":
+      level: B
+      canonical_action: passthrough
+      serving_action: drop
+    "DT(Mins)":
+      level: C
+      canonical_action: passthrough
+      serving_action: passthrough
+    "Status":
+      level: C
+      canonical_action: passthrough
+      serving_action: passthrough
+    "Risk":
+      level: C
+      canonical_action: passthrough
+      serving_action: passthrough
+    "Vendor DRI":
+      level: A
+      canonical_action: tokenize
+      serving_action: drop
+    "AAE DRI":
+      level: A
+      canonical_action: tokenize
+      serving_action: drop
+
+sources:
+
+  # ── Y25 Downtime ───────────────────────────────────────────────────────────
+  # Multi-sheet workbook (22 sheets). Data sheets are at indices [10]-[14].
+  # Sheet names have trailing spaces (e.g. "CG DT L1 Raw Data ") — use
+  # pattern mode which strips before matching, or specify via CLI --sheets.
+  #
+  # header_row differs per sheet:
+  #   L1/L2/L3: header_row=1
+  #   L4:       header_row=3
+  #   L5:       header_row=0
+  # → Use CLI --sheets + --header-row to override per run when needed.
+  #
+  # Column sets differ slightly across sheets (L1=19, L2=21, L3=18, L4=20, L5=21).
+  # L1 has 16344 total cols due to empty trailing columns.
+  # → Use columns_keep to select only the common diagnostic columns.
+  # → Empty/unnamed columns are always dropped automatically.
+
+  y25_downtime:
+    file_patterns:
+      - "C1STN DT*.xlsx"
+    sheet_selector:
+      mode: pattern
+      value: "CG DT L* Raw Data*"
+    combine_sheets: true
+    header_row: 1                   # 0-based; default for L1/L2/L3
+    # columns_keep: list of column names to retain (after normalization).
+    # Columns not in this list are dropped before masking.
+    # If omitted, all non-empty columns are kept.
+    columns_keep:
+      - "序號"
+      - "Date"
+      - "shift"
+      - "樓層"
+      - "線體名稱"
+      - "工站名稱"
+      - "Vendor"
+      - "異常分類"
+      - "異常描敘"
+      - "原因"
+      - "維修動作"
+      - "異常開始時間（time）"
+      - "異常結束時間（time）"
+      - "DT(Mins)"
+      - "Status"
+      - "Risk"
+      - "Vendor DRI"
+      - "AAE DRI"
+    name_mapping:
+      content_columns:
+        - "線體名稱"
+        - "工站名稱"
+        - "Vendor"
+        - "異常描敘"
+        - "原因"
+        - "維修動作"
+    governance:
+      filter_equals:
+        "工站名稱": "C1STN"
+      dedupe:
+        enabled: true
+        exclude_columns:
+          - "序號"
+    column_aliases: *y25_dt_aliases
+    column_rules: *y25_dt_rules
+
+  # ── Vision SOP — Fool-Proof List (TASK-041) ───────────────────────────────
+  # Source: Vision Flow SOP PPTX, slides 36 + 38, merged into one table.
+  # Extracted by TASK-041 (PPTX native table) → flattened columnar product
+  # (CSV/xlsx) → masked here. Not a raw xlsx; file_patterns matches the
+  # Phase 3 columnar export, header already flattened to a single row.
+  #
+  # IMPORTANT — two-row merged header:
+  #   The "Vendor" top header spans two sub-columns "DRI" and "Add Time".
+  #   Phase 3 assembly MUST flatten row0 ⊕ row1 into combined names BEFORE
+  #   masking, otherwise the DRI (person-name) column is mislabeled "Vendor"
+  #   (→ wrongly generalized, not dropped) and "Add Time" becomes an unnamed
+  #   column (→ auto-dropped). Flatten convention: top + " " + sub.
+  #     "Vendor" + "DRI"      → "Vendor DRI"   (Level A, person name)
+  #     "Vendor" + "Add Time" → "Vendor Add Time"
+  vision_sop_fool_proof_list:
+    file_patterns:
+      - "*fool_proof_list*.csv"
+      - "*fool_proof_list*.xlsx"
+    header_row: 0                   # columnar product already has flat header
+    columns_keep:
+      - "NO."
+      - "CCD Name"
+      - "Trigger NO."
+      - "Category"
+      - "Item"
+      - "Description"
+      - "Spec"
+      - "Function Switch"
+      - "Vendor DRI"
+      - "Vendor Add Time"
+      - "Remark"
+    name_mapping:
+      content_columns:
+        - "Description"
+        - "Remark"
+    column_rules:
+      "NO.":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "CCD Name":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Trigger NO.":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Category":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Item":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Description":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        note: "free text — may embed names; flag for review before external use"
+        review_flag: true
+      "Spec":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Function Switch":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Vendor DRI":
+        level: A
+        canonical_action: tokenize
+        serving_action: drop
+        note: "vendor-side responsible person (DRI sub-column under merged Vendor header)"
+      "Vendor Add Time":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_month
+        note: "timestamp (Add Time sub-column under merged Vendor header)"
+      "Remark":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        note: "free text — may embed names; flag for review before external use"
+        review_flag: true
+
+  # ── Error Codes (standardized) ─────────────────────────────────────────────
+  # Row 0 is a title row (e.g. "C1STN Error List"), row 1 is the actual header.
+  # Columns: Index | Item | Error code | Description | Remark (empty)
+  # Item and Error code have a 1:many relationship (Item = error type category).
+  # Remark is empty → will be dropped by _drop_unnamed / columns_keep.
+  error_codes_standardized:
+    file_patterns:
+      - "C1STN Error list*.xlsx"
+    sheet_selector:
+      mode: index
+      value: 0
+    header_row: 1                   # 0-based; row 0 is title, row 1 is header
+    columns_keep:
+      - "Index"
+      - "Item"
+      - "Error code"
+      - "Description"
+    name_mapping:
+      content_columns:
+        - "Item"
+        - "Description"
+    governance:
+      dedupe:
+        enabled: true
+        exclude_columns:
+          - "Index"
+    column_aliases:
+      "Error code":
+        - "Error Code"
+        - "error code"
+        - "ErrorCode"
+    column_rules:
+      "Index":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Item":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        note: "Error type category; 1:many with Error code"
+      "Error code":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Description":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+
+  # ── Error Codes (raw, with repair actions) ─────────────────────────────────
+  error_codes_raw:
+    file_patterns:
+      - "C1STN Error code.xlsx"
+    sheet_selector:
+      mode: index
+      value: 0
+    name_mapping:
+      content_columns:
+        - "Error Description"
+        - "Category"
+        - "Error Description (Chinese)"
+        - "Repair Actions"
+    governance:
+      dedupe:
+        enabled: true
+    column_aliases:
+      "Error Description (Chinese)":
+        - "Error Description(Chinese)"
+        - "Error Description （Chinese）"
+    column_rules:
+      "Error Description":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Code":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Category":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Error Description (Chinese)":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Repair Actions":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Local Alarm Code":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+
+  # ── TASK-035 v2 Error Code Catalog ────────────────────────────────────────
+  # Source family for the newly received v2 Error Code structured sources.
+  # This source family is based on the data dictionary only until inspect /
+  # dry-run confirms headers, sheets, and row counts in the controlled raw-data
+  # environment.
+  # V2-TASK001 expert-ranking annotation seed.
+  # Exact path and header metadata were supplied by the data owner without
+  # exposing workbook row values. This source remains annotation-candidate
+  # material: masking does not review or confirm cause/action semantics.
+  v2_task001_c1stn_error_code_seed:
+    governance_ids:
+      input_source_id: "raw__C1STN_error_data__C1STN Error code"
+      canonical_source_id: "processed__canonical__structured__v2_task001_c1stn_error_code_seed"
+      serving_source_id: "processed__serving__structured__v2_task001_c1stn_error_code_seed"
+    file_patterns:
+      - "C1STN_error_data/C1STN Error code.xlsx"
+    sheet_selector:
+      mode: index
+      value: 0
+    header_row: 0
+    columns_keep:
+      - "Error Description"
+      - "Code"
+      - "Category"
+      - "Error Description (Chinese)"
+      - "Repair Actions"
+      - "Local Alarm Code"
+    name_mapping:
+      content_columns:
+        - "Error Description"
+        - "Category"
+        - "Error Description (Chinese)"
+        - "Repair Actions"
+    governance:
+      dedupe:
+        enabled: true
+    column_aliases:
+      "Error Description (Chinese)":
+        - "Error Description(Chinese)"
+        - "Error Description （Chinese）"
+    column_rules:
+      "Error Description":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+        note: "diagnostic free text; inspect locally for embedded identifiers or sensitive operational context"
+      "Code":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Category":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Error Description (Chinese)":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+        note: "diagnostic free text; inspect locally for embedded identifiers or sensitive operational context"
+      "Repair Actions":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+        note: "source-suggested repair text only; not reviewed gold"
+      "Local Alarm Code":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+
+  error_code_catalog_v2:
+    file_patterns:
+      - "ERROR CODE_C1STN2_BZ.xlsx"
+      - "ERROR CODE_C1STN_BZ.xlsx"
+      - "ERROR CODE_C1STN2_IPI.xlsx"
+    require_all_file_patterns: true
+    sheet_selector:
+      mode: index
+      value: 0
+    header_row: 0
+    columns_keep:
+      - "Error Code"
+      - "Error Type"
+      - "Error Category"
+      - "Category(HIVE)"
+      - "Level"
+      - "Error Description"
+      - "Error Description (Chinese)"
+      - "Effect Type"
+      - "是否報警"
+      - "是否拋轉PMS"
+      - "Root Cause"
+      - "ST Action"
+      - "Repair Action"
+      - "設備現有Error Code"
+      - "廠區"
+      - "機種"
+      - "製程"
+      - "設備類型 Consign/HC"
+      - "工站名稱"
+      - "廠商 Vendor"
+    name_mapping:
+      content_columns:
+        - "Error Description"
+        - "Error Description (Chinese)"
+        - "Root Cause"
+        - "ST Action"
+        - "Repair Action"
+    governance:
+      dedupe:
+        enabled: true
+    column_aliases:
+      "Error Code":
+        - "Error code"
+        - "ErrorCode"
+      "Error Description (Chinese)":
+        - "Error Description(Chinese)"
+        - "Error Description （Chinese）"
+      "Category(HIVE)":
+        - "Category (HIVE)"
+      "Level":
+        - "等級Level"
+        - "等级Level"
+      "是否報警":
+        - "是否报警"
+      "是否拋轉PMS":
+        - "是否抛转PMS"
+        - "是否拋轉 PMS"
+      "設備現有Error Code":
+        - "设备现有Error Code"
+        - "設備現有 Error Code"
+      "廠區":
+        - "厂区"
+      "機種":
+        - "机种"
+      "製程":
+        - "制程"
+      "設備類型 Consign/HC":
+        - "设备类型 Consign/HC"
+        - "設備類型(Consign/HC)"
+      "工站名稱":
+        - "工站名称"
+      "廠商 Vendor":
+        - "厂商 Vendor"
+        - "Vendor"
+    column_rules:
+      "Error Code":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Error Type":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Error Category":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Category(HIVE)":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Level":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Error Description":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+        note: "free text; may embed internal IDs or sensitive operational context"
+      "Error Description (Chinese)":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+        note: "free text; may embed internal IDs or sensitive operational context"
+      "Effect Type":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "是否報警":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "是否拋轉PMS":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Root Cause":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+        note: "candidate / possible cause only; not confirmed root cause"
+      "ST Action":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+        note: "candidate ST action text only; not confirmed diagnosis"
+      "Repair Action":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+      "設備現有Error Code":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "廠區":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_type
+      "機種":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_type
+      "製程":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_type
+      "設備類型 Consign/HC":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_type
+      "工站名稱":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_type
+      "廠商 Vendor":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_type
+
+  # ── TASK-035 v2 Repair SOP ────────────────────────────────────────────────
+  # Legacy .xls sources must be converted locally to .xlsx before inspect /
+  # dry-run using scripts/ingest/convert_xls_to_xlsx.ps1.
+  # V2-TASK001 external-vendor vocabulary-design reference.
+  # Masked local reference only: not diagnosis data, KG input, serving
+  # evidence, or gold-label authority. Convert the legacy .xls locally first.
+  v2_task001_vendor_repair_sop_vocab_reference:
+    governance_ids:
+      input_source_id: "raw__C1STN_error_data__Repair SOP_C1STN"
+      canonical_source_id: "processed__canonical__structured__v2_task001_vendor_repair_sop_vocab_reference"
+      serving_source_id: "processed__serving__structured__v2_task001_vendor_repair_sop_vocab_reference"
+    file_patterns:
+      - "C1STN_error_data/Repair SOP_C1STN.xlsx"
+    require_all_file_patterns: true
+    sheet_selector:
+      mode: index
+      value: 0
+    header_row: 0
+    columns_keep:
+      - "Error Code"
+      - "Item"
+      - "Root Cause"
+      - "Repair Action"
+      - "Repair Action編碼"
+      - "詳細維修動作描述"
+      - "異常分類-維修步驟維度"
+      - "異常分類-DT時間維度"
+      - "異常分類-發生概率維度"
+      - "機種"
+      - "工站名稱"
+      - "廠商 Vendor"
+    name_mapping:
+      content_columns:
+        - "Item"
+        - "Root Cause"
+        - "Repair Action"
+        - "詳細維修動作描述"
+    governance:
+      dedupe:
+        enabled: true
+    column_aliases:
+      "Error Code":
+        - "Error code"
+        - "ErrorCode"
+      "Repair Action編碼":
+        - "Repair Action编码"
+        - "Repair Action Code"
+      "詳細維修動作描述":
+        - "详细维修动作描述"
+      "異常分類-維修步驟維度":
+        - "异常分类-维修步骤维度"
+        - "異常分級-維修步驟維度"
+        - "异常分级-维修步骤维度"
+      "異常分類-DT時間維度":
+        - "异常分类-DT时间维度"
+        - "異常分級-DT時間維度"
+        - "异常分级-DT时间维度"
+      "異常分類-發生概率維度":
+        - "异常分类-发生概率维度"
+        - "異常分類-發生頻率維度"
+        - "异常分类-发生频率维度"
+        - "異常分級-發生評率維度"
+        - "異常分級-發生頻率維度"
+        - "异常分级-发生频率维度"
+      "機種":
+        - "机种"
+      "工站名稱":
+        - "工站名称"
+      "廠商 Vendor":
+        - "厂商 Vendor"
+        - "Vendor"
+    column_rules:
+      "Error Code":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Item":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+      "Root Cause":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+        note: "external-vendor candidate only; not CGSF/C1STN diagnostic truth"
+      "Repair Action":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+        note: "external-vendor reference only; requires CGSF canonicalization review"
+      "Repair Action編碼":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "詳細維修動作描述":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+        note: "free text; may embed internal IDs or sensitive operational context"
+      "異常分類-維修步驟維度":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "異常分類-DT時間維度":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "異常分類-發生概率維度":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "機種":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_type
+      "工站名稱":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_type
+      "廠商 Vendor":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_type
+
+  repair_sop_v2:
+    file_patterns:
+      - "repair sop_C1STN_BZ.xlsx"
+      - "Repair SOP_C1STN2_BZ.xlsx"
+      - "Repair SOP_C1STN2_IPI.xlsx"
+    require_all_file_patterns: true
+    sheet_selector:
+      mode: index
+      value: 0
+    header_row: 0
+    columns_keep:
+      - "Error Code"
+      - "Item"
+      - "Root Cause"
+      - "Repair Action"
+      - "Repair Action編碼"
+      - "詳細維修動作描述"
+      - "異常分類-維修步驟維度"
+      - "異常分類-DT時間維度"
+      - "異常分類-發生概率維度"
+      - "機種"
+      - "工站名稱"
+      - "廠商 Vendor"
+    name_mapping:
+      content_columns:
+        - "Item"
+        - "Root Cause"
+        - "Repair Action"
+        - "詳細維修動作描述"
+    governance:
+      dedupe:
+        enabled: true
+    column_aliases:
+      "Error Code":
+        - "Error code"
+        - "ErrorCode"
+      "Repair Action編碼":
+        - "Repair Action编码"
+        - "Repair Action Code"
+      "詳細維修動作描述":
+        - "详细维修动作描述"
+      "異常分類-維修步驟維度":
+        - "异常分类-维修步骤维度"
+        - "異常分級-維修步驟維度"
+        - "异常分级-维修步骤维度"
+      "異常分類-DT時間維度":
+        - "异常分类-DT时间维度"
+        - "異常分級-DT時間維度"
+        - "异常分级-DT时间维度"
+      "異常分類-發生概率維度":
+        - "异常分类-发生概率维度"
+        - "異常分類-發生頻率維度"
+        - "异常分类-发生频率维度"
+        - "異常分級-發生評率維度"
+        - "異常分級-發生頻率維度"
+        - "异常分级-发生频率维度"
+      "機種":
+        - "机种"
+      "工站名稱":
+        - "工站名称"
+      "廠商 Vendor":
+        - "厂商 Vendor"
+        - "Vendor"
+    column_rules:
+      "Error Code":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Item":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+      "Root Cause":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+        note: "candidate / possible cause only; not confirmed root cause"
+      "Repair Action":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+      "Repair Action編碼":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "詳細維修動作描述":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+        note: "free text; may embed internal IDs or sensitive operational context"
+      "異常分類-維修步驟維度":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "異常分類-DT時間維度":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "異常分類-發生概率維度":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "機種":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_type
+      "工站名稱":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_type
+      "廠商 Vendor":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_type
+
+  # ── FAT/SAT Checklist ──────────────────────────────────────────────────────
+  fat_sat_checklist:
+    file_patterns:
+      - "C1STN FAT SAT Check list*.xlsx"
+    sheet_selector:
+      mode: index
+      value: 0
+    name_mapping:
+      content_columns:
+        - "Station"
+        - "issue"
+        - "Action"
+        - "FAT/SAT/ Check list"
+    governance:
+      dedupe:
+        enabled: true
+    column_aliases:
+      "FAT/SAT/ Check list":
+        - "FAT/SAT/Check list"
+        - "FAT/SAT Check list"
+        - "FAT/SAT/ Checklist"
+    column_rules:
+      "Station":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "Classify":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "DRI":
+        level: A
+        canonical_action: tokenize
+        serving_action: drop
+      "CP":
+        level: B
+        canonical_action: passthrough
+        serving_action: generalize
+        generalize_method: to_month
+      "state":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "issue":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+      "Action":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "FAT/SAT/ Check list":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        note: "SOP reference"
+
+  # ── Troubleshooting SOP (→ eval set, not graph) ────────────────────────────
+  troubleshooting_sop:
+    file_patterns:
+      - "C1STN Trouble shooting*"
+    sheet_selector:
+      mode: pattern
+      value: "C**F"
+    output_target: eval          # goes to data/eval/, not data/processed/
+    name_mapping:
+      content_columns:
+        - "工站名稱"
+        - "異常描述"
+        - "原因"
+        - "維修動作"
+    governance:
+      dedupe:
+        enabled: true
+        exclude_columns:
+          - "序號"
+    column_aliases:
+      "異常描述":
+        - "异常描述"
+        - "異常描敘"
+      "工站名稱":
+        - "工站名称"
+      "維修動作":
+        - "维修动作"
+      "異常發生頻率":
+        - "异常发生频率"
+      "DT(Mins)":
+        - "DT（Mins）"
+        - "DT (Mins)"
+    column_rules:
+      "序號":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "工站名稱":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "異常描述":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+      "原因":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+        review_flag: true
+      "維修動作":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "異常發生頻率":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "DT(Mins)":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+
+  # ── C1STN BOM04 Replacement List (V2-TASK017) ──────────────────────────────
+  # Raw: data/raw/C1STN_bom_material/L_ReplacementList.xlsx, registered in
+  # source_inventory as raw__C1STN_bom_material__L_ReplacementList (route_a,
+  # unmasked). Column classification approved by the data owner 2026-08-27
+  # (source_inventory note): consumed = 耗材品名/耗材規格/自動化工站/station;
+  # sensitive = 品牌/單價/耗材QPL/廠商 PN/聯繫人/備註. Every other column
+  # (設備QPL deferred, 是否與D9X通用, 使用壽命, 性質, 5X free-supply terms,
+  # ZZ safety stock) is dropped via columns_keep before masking.
+  # Row layout verified by the owner dry-run 2026-08-27: row 0 = blank/title,
+  # row 1 = headers, row 2 = field-description row (skipped). Data starts at
+  # Excel row 4 — aligned with replacement_extract.yaml (header_row: 1,
+  # data_offset: 2).
+  c1stn_replacement_list:
+    file_patterns:
+      - "C1STN_bom_material/L_ReplacementList.xlsx"
+    require_all_file_patterns: true
+    sheet_selector:
+      mode: name
+      value: "工作表1"                  # single-sheet workbook; confirmed via dry-run 2026-08-27
+    header_row: 1                       # verified BOM04 layout: row 0 blank/title, row 1 = headers
+    skip_rows_after_header: 1           # field-description row -> skipped
+    columns_keep:
+      - "自動化工站"
+      - "耗材品名"
+      - "耗材規格"
+      - "品牌"
+      - "單價"
+      - "耗材QPL"
+      - "station"
+      - "廠商 PN"
+      - "聯繫人"
+      - "備註"
+    governance_ids:
+      input_source_id: "raw__C1STN_bom_material__L_ReplacementList"
+      canonical_source_id: "processed__canonical__structured__c1stn_replacement_list"
+      serving_source_id: "processed__serving__structured__c1stn_replacement_list"
+    column_rules:
+      "自動化工站":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "耗材品名":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "耗材規格":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "station":
+        level: C
+        canonical_action: passthrough
+        serving_action: passthrough
+      "品牌":
+        level: A
+        canonical_action: tokenize      # TOK_<sha256[:12]> — distinct vendors stay distinguishable
+        serving_action: drop
+      "廠商 PN":
+        level: A
+        canonical_action: tokenize
+        serving_action: drop
+      "耗材QPL":
+        level: A
+        canonical_action: tokenize
+        serving_action: drop
+        note: "internal part code — owner-classified sensitive; overrides the global C-level QPL retain"
+      "單價":
+        level: A
+        canonical_action: tokenize
+        serving_action: drop
+        note: "unit price — commercial-sensitive per owner classification"
+      "聯繫人":
+        level: A
+        canonical_action: tokenize
+        serving_action: drop
+      "備註":
+        level: A
+        canonical_action: redact        # free text cannot be tokenized meaningfully
+        serving_action: drop
+        review_flag: true
+        note: "free-text remarks may embed identifiers; redacted in canonical, dropped in serving"
+
+# ── Unstructured masking patterns ────────────────────────────────────────────
+# Applied to MinerU extraction output (JSON / Markdown / plain text).
+# These are regex-based text-level patterns, NOT column rules.
+
+unstructured:
+  supported_formats:
+    - json
+    - markdown
+    - txt
+  input_dir: "data/raw/minerU_output"
+  patterns:
+    - name: email
+      regex: '[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}'
+      action: redact
+      replacement: "[EMAIL_REDACTED]"
+    - name: phone_cn
+      regex: '(?:\+?86[-\s]?)?1[3-9]\d{9}'
+      action: redact
+      replacement: "[PHONE_REDACTED]"
+    - name: phone_intl
+      regex: '\+\d{1,3}[-\s]?\d{4,14}'
+      action: redact
+      replacement: "[PHONE_REDACTED]"
+    - name: device_serial
+      regex: '[A-Z]{2,4}[-_]?\d{6,}'
+      action: hash
+      note: "broad pattern — review false positives with preview"
+    - name: employee_id
+      regex: '[A-Z]\d{6,8}'
+      action: redact
+      replacement: "[ID_REDACTED]"
+      note: "typical employee ID pattern — adjust if needed"

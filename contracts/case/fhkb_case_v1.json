@@ -1,0 +1,146 @@
+{
+  "$id": "fhkb_case_v1",
+  "title": "FaultDx FHKB Canonical Case Ingestion Contract",
+  "version": "1.0",
+  "date": "2026-07-23",
+  "status": "FROZEN",
+  "owner": "data_contract_engineer",
+  "schema_ref": "fhkb_case_v1.schema.json",
+  "validation_policy_ref": "fhkb_validation_policy_v1",
+  "knowledge_asset": "FHKB",
+  "route_boundary": "route_c_case",
+  "description": "Defines the canonical, governed historical-case object accepted by FHKB. Cases remain candidate references and cannot be promoted in place.",
+  "ingestion_contract": {
+    "semantics": "historical_case_reference_only",
+    "record_model": "FHKBCaseRecord",
+    "package_required_fields": [
+      "schema_version",
+      "release_id",
+      "source_id",
+      "source_version",
+      "manifest_digest",
+      "lineage_ref",
+      "masking_status",
+      "serving_safe",
+      "records"
+    ],
+    "record_required_fields": [
+      "case_id",
+      "case_version",
+      "derivation_rule_version",
+      "source_id",
+      "source_version",
+      "source_record_ids",
+      "source_refs",
+      "case_type",
+      "case_status",
+      "publication_status",
+      "route_target",
+      "serving_safe",
+      "review_maturity",
+      "phenomenon",
+      "candidate_causes",
+      "candidate_actions",
+      "temporal_context",
+      "equipment_context",
+      "evidence_summary",
+      "field_authority",
+      "legacy_context",
+      "warnings"
+    ],
+    "route_mapping": {
+      "producer_marker_field": "route_target",
+      "producer_marker_value": "rag_case_pool",
+      "consumer_target": "case_retrieval"
+    },
+    "required_values": {
+      "schema_version": "fhkb_case_v1",
+      "case_version": 1,
+      "derivation_rule_version": "fhkb_case_identity_v1",
+      "case_status": "candidate",
+      "route_target": "rag_case_pool",
+      "publication_status": "candidate_only",
+      "serving_safe": true
+    },
+    "allowed_case_types": [
+      "structured_case_candidate",
+      "field_history_case_candidate"
+    ],
+    "identity_rules": {
+      "case_id": "FHC_ plus SHA-256 of the canonical JSON tuple [fhkb_case_identity_v1, source_id, source_version, sorted unique source_record_ids].",
+      "collision_behavior": "Reject duplicate case_id when canonical serialized record content differs. Byte-equivalent duplicates may be collapsed deterministically.",
+      "rebuild_behavior": "Unchanged governed source identity produces the same case_id across deterministic rebuilds."
+    },
+    "field_authority": {
+      "phenomenon.observed_texts": "source_observed",
+      "phenomenon.normalized_text": "normalized_candidate",
+      "candidate_causes": "historical_candidate",
+      "candidate_actions": "historical_candidate",
+      "temporal_context": "source_observed_or_normalized",
+      "equipment_context": "source_observed_or_normalized",
+      "evidence_summary": "source_aggregate"
+    },
+    "missingness_rules": {
+      "nullable_scalar": "Use explicit null when the source does not provide a scalar value.",
+      "repeatable_text": "Use an empty array when the source provides no cause, action, or observed phenomenon text.",
+      "no_chain_completion": "Do not infer a missing phenomenon, cause, action, time, equipment scope, or evidence value.",
+      "minimum_retrieval_text": "At least one observed or normalized phenomenon, candidate cause, or candidate action is required."
+    },
+    "output_constraints": {
+      "route_family": "route_c_case",
+      "answer_type": "case_reference",
+      "status": "candidate",
+      "confirmed_diagnosis_allowed": false,
+      "reviewed_mapping_record_allowed": false
+    }
+  },
+  "legacy_adapter": {
+    "name": "fhkb_legacy_adapter_v1",
+    "source_shape": "route_c_source_boundary_v1 candidate projection",
+    "field_mapping": {
+      "rag_candidate_id": "discarded after validating the legacy input envelope; it is not emitted by FHKB",
+      "source_type": "case_type",
+      "field_case_without_standard_fp": "case_type=field_history_case_candidate and legacy_context.legacy_source_type",
+      "nomic_semantic_related_candidate": "case_type=structured_case_candidate and legacy_context.legacy_source_type",
+      "field_fp_variants": "phenomenon.observed_texts",
+      "field_fp_normalized": "phenomenon.normalized_text",
+      "RC": "candidate_causes",
+      "PA": "candidate_actions",
+      "event_time": "temporal_context.event_time",
+      "device_scope": "equipment_context.device_scope",
+      "evidence": "evidence_summary",
+      "evidence.date_range.min": "evidence_summary.date_range.start",
+      "evidence.date_range.max": "evidence_summary.date_range.end",
+      "relation_type": "legacy_context.relation_type",
+      "filter_basis.reason": "legacy_context.filter_basis_reason",
+      "filter_basis.not_for_kg_text2cypher": "legacy_context.not_for_kg_text2cypher"
+    },
+    "source_record_resolution": "Use explicit canonical source_record_id when present. For the legacy SourceRef shape, derive FHS_ plus SHA-256 of its closed canonical fields and retain every legacy field in the canonical source reference.",
+    "normalization": "Scalar or list legacy text becomes a trimmed, order-preserving, de-duplicated string array. Empty strings become missing values, never inferred text.",
+    "unsafe_behavior": "Reject blocked fields, promotion claims, wrong route markers, ambiguous provenance, unsupported evidence shapes, and conflicting identity collisions."
+  },
+  "compatibility": {
+    "legacy_contract": "route_c_source_boundary_v1",
+    "preserved": [
+      "rag_case_pool producer marker",
+      "case_retrieval consumer target",
+      "candidate_only publication",
+      "relation_type and filter_basis.reason legacy context",
+      "no in-place promotion"
+    ],
+    "breaking_changes": [
+      "The legacy producer identifier is not emitted; canonical identity is case_id.",
+      "Legacy FP/RC/PA fields move into typed canonical case content.",
+      "Release, source version, lineage, masking, serving safety, and record-level source refs are mandatory.",
+      "Unknown canonical record fields are rejected."
+    ],
+    "migration": [
+      "Keep route_c_source_boundary_v1 active until this pair is frozen and runtime adoption is approved.",
+      "Run the offline legacy adapter against approved serving-safe packages.",
+      "Validate canonical output and migrate consumer lookup behavior to case_id.",
+      "Bind a consumer only after affected-consumer review."
+    ],
+    "rollback": "Continue using the named Route C source-boundary projection. The offline adapter does not mutate the source package or runtime binding.",
+    "runtime_binding": "not_authorized_pending_activation"
+  }
+}

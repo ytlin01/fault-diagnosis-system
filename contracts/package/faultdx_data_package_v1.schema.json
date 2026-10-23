@@ -1,0 +1,831 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faultdx_data_package_v1.schema.json",
+  "title": "FaultDx Governed Data Package Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "package_id",
+    "content_digest",
+    "release_id",
+    "knowledge_asset",
+    "route_family",
+    "package_type",
+    "record_contract",
+    "source",
+    "lineage",
+    "producer",
+    "artifacts",
+    "masking_evidence",
+    "component_refs",
+    "route_policy",
+    "decision"
+  ],
+  "properties": {
+    "manifest_version": {
+      "const": "faultdx_data_package_v1"
+    },
+    "package_id": {
+      "$ref": "#/$defs/package_id"
+    },
+    "content_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "release_id": {
+      "$ref": "#/$defs/nonempty"
+    },
+    "knowledge_asset": {
+      "enum": [
+        "TPDX",
+        "DEKG",
+        "FHKB"
+      ]
+    },
+    "route_family": {
+      "enum": [
+        "route_a_structured",
+        "route_b_document",
+        "route_c_case"
+      ]
+    },
+    "package_type": {
+      "enum": [
+        "tpdx_topology_component",
+        "tpdx_diagnostic_component",
+        "tpdx_replacement_material_component",
+        "tpdx_release",
+        "dekg_evidence",
+        "fhkb_case"
+      ]
+    },
+    "record_contract": {
+      "$ref": "#/$defs/record_contract"
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "lineage": {
+      "$ref": "#/$defs/lineage"
+    },
+    "producer": {
+      "$ref": "#/$defs/producer"
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    },
+    "masking_evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/masking_reference"
+      }
+    },
+    "component_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/component_reference"
+      }
+    },
+    "route_policy": {
+      "$ref": "#/$defs/route_policy"
+    },
+    "decision": {
+      "$ref": "#/$defs/decision"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "knowledge_asset": {
+            "const": "TPDX"
+          }
+        },
+        "required": [
+          "knowledge_asset"
+        ]
+      },
+      "then": {
+        "properties": {
+          "route_family": {
+            "const": "route_a_structured"
+          },
+          "package_type": {
+            "enum": [
+              "tpdx_topology_component",
+              "tpdx_diagnostic_component",
+              "tpdx_replacement_material_component",
+              "tpdx_release"
+            ]
+          },
+          "record_contract": {
+            "properties": {
+              "contract_id": {
+                "const": "tpdx_kg_schema_v4_2"
+              },
+              "schema_path": {
+                "const": "contracts/schema/tpdx_kg_schema_v4_2.schema.json"
+              }
+            }
+          },
+          "route_policy": {
+            "properties": {
+              "content_semantics": {
+                "const": "reviewed_structured_fact"
+              },
+              "promotion_allowed": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "knowledge_asset": {
+            "const": "DEKG"
+          }
+        },
+        "required": [
+          "knowledge_asset"
+        ]
+      },
+      "then": {
+        "properties": {
+          "route_family": {
+            "const": "route_b_document"
+          },
+          "package_type": {
+            "const": "dekg_evidence"
+          },
+          "record_contract": {
+            "properties": {
+              "contract_id": {
+                "const": "dekg_evidence_v2"
+              },
+              "schema_path": {
+                "const": "contracts/evidence/dekg_evidence_v2.schema.json"
+              }
+            }
+          },
+          "route_policy": {
+            "properties": {
+              "content_semantics": {
+                "const": "evidence_only"
+              },
+              "promotion_allowed": {
+                "const": false
+              },
+              "independent_corroboration": {
+                "const": false
+              }
+            }
+          },
+          "decision": {
+            "properties": {
+              "promotion_status": {
+                "const": "not_applicable"
+              }
+            }
+          },
+          "component_refs": {
+            "maxItems": 0
+          },
+          "artifacts": {
+            "contains": {
+              "properties": {
+                "artifact_role": {
+                  "const": "record_payload"
+                }
+              },
+              "required": [
+                "artifact_role"
+              ]
+            },
+            "minContains": 1,
+            "maxContains": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "knowledge_asset": {
+            "const": "FHKB"
+          }
+        },
+        "required": [
+          "knowledge_asset"
+        ]
+      },
+      "then": {
+        "properties": {
+          "route_family": {
+            "const": "route_c_case"
+          },
+          "package_type": {
+            "const": "fhkb_case"
+          },
+          "record_contract": {
+            "properties": {
+              "contract_id": {
+                "const": "fhkb_case_v1"
+              },
+              "schema_path": {
+                "const": "contracts/case/fhkb_case_v1.schema.json"
+              }
+            }
+          },
+          "route_policy": {
+            "properties": {
+              "content_semantics": {
+                "const": "candidate"
+              },
+              "promotion_allowed": {
+                "const": false
+              }
+            }
+          },
+          "decision": {
+            "properties": {
+              "promotion_status": {
+                "const": "not_applicable"
+              }
+            }
+          },
+          "component_refs": {
+            "maxItems": 0
+          },
+          "artifacts": {
+            "contains": {
+              "properties": {
+                "artifact_role": {
+                  "const": "record_payload"
+                }
+              },
+              "required": [
+                "artifact_role"
+              ]
+            },
+            "minContains": 1,
+            "maxContains": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "package_type": {
+            "const": "tpdx_release"
+          }
+        },
+        "required": [
+          "package_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "component_refs": {
+            "minItems": 1,
+            "allOf": [
+              {
+                "contains": {
+                  "properties": {
+                    "package_type": {
+                      "const": "tpdx_topology_component"
+                    }
+                  },
+                  "required": [
+                    "package_type"
+                  ]
+                },
+                "minContains": 0,
+                "maxContains": 1
+              },
+              {
+                "contains": {
+                  "properties": {
+                    "package_type": {
+                      "const": "tpdx_diagnostic_component"
+                    }
+                  },
+                  "required": [
+                    "package_type"
+                  ]
+                },
+                "minContains": 0,
+                "maxContains": 1
+              },
+              {
+                "contains": {
+                  "properties": {
+                    "package_type": {
+                      "const": "tpdx_replacement_material_component"
+                    }
+                  },
+                  "required": [
+                    "package_type"
+                  ]
+                },
+                "minContains": 0,
+                "maxContains": 1
+              }
+            ]
+          },
+          "artifacts": {
+            "contains": {
+              "properties": {
+                "artifact_role": {
+                  "const": "record_payload"
+                }
+              },
+              "required": [
+                "artifact_role"
+              ]
+            },
+            "minContains": 0,
+            "maxContains": 0
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "component_refs": {
+            "maxItems": 0
+          }
+        },
+        "if": {
+          "properties": {
+            "knowledge_asset": {
+              "const": "TPDX"
+            }
+          },
+          "required": [
+            "knowledge_asset"
+          ]
+        },
+        "then": {
+          "properties": {
+            "artifacts": {
+              "contains": {
+                "properties": {
+                  "artifact_role": {
+                    "const": "record_payload"
+                  }
+                },
+                "required": [
+                  "artifact_role"
+                ]
+              },
+              "minContains": 1,
+              "maxContains": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decision": {
+            "properties": {
+              "package_status": {
+                "const": "released"
+              }
+            },
+            "required": [
+              "package_status"
+            ]
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "decision": {
+            "properties": {
+              "review_status": {
+                "const": "reviewed"
+              },
+              "serving_safe": {
+                "const": true
+              },
+              "route_eligible": {
+                "const": true
+              },
+              "release_decision_id": {
+                "$ref": "#/$defs/nonempty"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "knowledge_asset": {
+            "const": "TPDX"
+          },
+          "decision": {
+            "properties": {
+              "package_status": {
+                "const": "released"
+              }
+            },
+            "required": [
+              "package_status"
+            ]
+          }
+        },
+        "required": [
+          "knowledge_asset",
+          "decision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "decision": {
+            "properties": {
+              "promotion_status": {
+                "const": "reviewed"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nonempty": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nullable_nonempty": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/nonempty"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "package_id": {
+      "type": "string",
+      "pattern": "^PKG_[0-9a-f]{64}$"
+    },
+    "artifact_id": {
+      "type": "string",
+      "pattern": "^ART_[0-9a-f]{64}$"
+    },
+    "portable_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.?(/|$))(?!.*//)(?!.*\\\\).+$"
+    },
+    "record_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_id",
+        "schema_path",
+        "contract_digest"
+      ],
+      "properties": {
+        "contract_id": {
+          "enum": [
+            "tpdx_kg_schema_v4_2",
+            "dekg_evidence_v2",
+            "fhkb_case_v1"
+          ]
+        },
+        "schema_path": {
+          "$ref": "#/$defs/portable_path"
+        },
+        "contract_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "source_version"
+      ],
+      "properties": {
+        "source_id": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "source_version": {
+          "$ref": "#/$defs/nonempty"
+        }
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lineage_ref",
+        "source_manifest_path",
+        "source_manifest_digest",
+        "parent_package_ids"
+      ],
+      "properties": {
+        "lineage_ref": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "source_manifest_path": {
+          "$ref": "#/$defs/portable_path"
+        },
+        "source_manifest_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "parent_package_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/package_id"
+          }
+        }
+      }
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "code_revision"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "version": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "code_revision": {
+          "$ref": "#/$defs/nonempty"
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "artifact_role",
+        "relative_path",
+        "media_type",
+        "sha256",
+        "byte_size",
+        "record_count",
+        "requires_masking"
+      ],
+      "properties": {
+        "artifact_id": {
+          "$ref": "#/$defs/artifact_id"
+        },
+        "artifact_role": {
+          "enum": [
+            "record_payload",
+            "exclusions",
+            "review_queue",
+            "merge_audit",
+            "leakage_report",
+            "validation_report",
+            "component_index"
+          ]
+        },
+        "relative_path": {
+          "$ref": "#/$defs/portable_path"
+        },
+        "media_type": {
+          "enum": [
+            "application/json",
+            "application/jsonl",
+            "text/csv",
+            "text/markdown"
+          ]
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "byte_size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "record_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "requires_masking": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "artifact_role": {
+                "enum": [
+                  "record_payload",
+                  "exclusions",
+                  "review_queue"
+                ]
+              }
+            },
+            "required": [
+              "artifact_role"
+            ]
+          },
+          "then": {
+            "properties": {
+              "record_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "masking_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "manifest_path",
+        "manifest_digest",
+        "covered_artifact_ids",
+        "masking_status",
+        "review_status",
+        "effective"
+      ],
+      "properties": {
+        "run_id": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "manifest_path": {
+          "$ref": "#/$defs/portable_path"
+        },
+        "manifest_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "covered_artifact_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/artifact_id"
+          }
+        },
+        "masking_status": {
+          "enum": [
+            "masked",
+            "reviewed_masked",
+            "not_required"
+          ]
+        },
+        "review_status": {
+          "enum": [
+            "pending",
+            "reviewed",
+            "rejected",
+            "not_required"
+          ]
+        },
+        "effective": {
+          "type": "boolean"
+        }
+      }
+    },
+    "component_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_id",
+        "package_type",
+        "manifest_path",
+        "manifest_digest",
+        "acceptance_status"
+      ],
+      "properties": {
+        "package_id": {
+          "$ref": "#/$defs/package_id"
+        },
+        "package_type": {
+          "enum": [
+            "tpdx_topology_component",
+            "tpdx_diagnostic_component",
+            "tpdx_replacement_material_component"
+          ]
+        },
+        "manifest_path": {
+          "$ref": "#/$defs/portable_path"
+        },
+        "manifest_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "acceptance_status": {
+          "const": "accepted"
+        }
+      }
+    },
+    "route_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content_semantics",
+        "promotion_allowed",
+        "independent_corroboration"
+      ],
+      "properties": {
+        "content_semantics": {
+          "enum": [
+            "reviewed_structured_fact",
+            "evidence_only",
+            "candidate"
+          ]
+        },
+        "promotion_allowed": {
+          "type": "boolean"
+        },
+        "independent_corroboration": {
+          "type": "boolean"
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_status",
+        "review_status",
+        "serving_safe",
+        "route_eligible",
+        "promotion_status",
+        "promotion_decision_id",
+        "release_decision_id"
+      ],
+      "properties": {
+        "package_status": {
+          "enum": [
+            "candidate",
+            "accepted",
+            "rejected",
+            "released"
+          ]
+        },
+        "review_status": {
+          "enum": [
+            "not_reviewed",
+            "in_review",
+            "reviewed",
+            "rejected"
+          ]
+        },
+        "serving_safe": {
+          "type": "boolean"
+        },
+        "route_eligible": {
+          "type": "boolean"
+        },
+        "promotion_status": {
+          "enum": [
+            "candidate",
+            "reviewed",
+            "not_applicable"
+          ]
+        },
+        "promotion_decision_id": {
+          "$ref": "#/$defs/nullable_nonempty"
+        },
+        "release_decision_id": {
+          "$ref": "#/$defs/nullable_nonempty"
+        }
+      }
+    }
+  }
+}

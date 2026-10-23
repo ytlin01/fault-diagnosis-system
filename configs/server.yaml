@@ -1,0 +1,37 @@
+# E3 — Ubuntu shared test server (128G RAM, shared GPU/CPU)
+# Inherits from base.yaml; overrides for batch processing and integration testing.
+environment: server
+
+runtime:
+  execution_target: server
+  debug: false
+  log_level: WARNING
+
+# Company LLM API; base/key resolved from FAULTDX_COMPANY_API_* env vars
+provider:
+  type: company_api
+  timeout_seconds: 60
+  max_retries: 3
+
+graph:
+  enabled: true
+
+# GraphRAG primary validation environment — full index build and integration tests run here
+graphrag:
+  enabled: true
+
+retrieval:
+  enabled: true
+  top_k: 10
+
+# Batch processing parameters for server-scale workloads
+batch:
+  size: 32
+  max_workers: 4
+
+logging:
+  level: WARNING
+  output: file                # write to log file on server
+
+governance:
+  enforce_config_review: true

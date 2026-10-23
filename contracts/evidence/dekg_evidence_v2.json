@@ -1,0 +1,188 @@
+{
+  "$id": "dekg_evidence_v2",
+  "title": "FaultDx DEKG Full-Document and Evidence-Residual Ingestion Contract",
+  "version": "1.0",
+  "date": "2026-07-23",
+  "status": "FROZEN",
+  "owner": "data_contract_engineer",
+  "supersedes": "route_b_evidence_v2",
+  "schema_ref": "dekg_evidence_v2.schema.json",
+  "validation_policy_ref": "dekg_validation_policy_v2",
+  "knowledge_asset": "DEKG",
+  "route_boundary": "route_b_document",
+  "description": "Defines the governed DEKGEvidenceRecord envelope. DEKG normally receives the complete governed serving-safe document. Evidence-residual mode is used only when anchored tabular segments from that document are selected for TPDX; those table segments are partitioned out and the remaining document content enters DEKG.",
+  "schema_relationship": {
+    "tpdx_schema_ref": "tpdx_kg_schema_v4_1",
+    "dependency": "provenance_reference_only",
+    "dekg_evidence_records_are_tpdx_nodes": false,
+    "dekg_evidence_records_are_graph_nodes": false,
+    "note": "DEKGEvidenceRecord is a governed transfer object. Any DEKG graph/index representation is a downstream derivative that must retain evidence_id."
+  },
+  "ingestion_contract": {
+    "semantics": "document_evidence_only",
+    "record_model": "DEKGEvidenceRecord",
+    "routing_order": [
+      "Register, parse, mask, and validate the governed source document as one mother-document version.",
+      "Decide whether any anchored table segment is selected for TPDX; extraction success alone is not a selection decision.",
+      "If no table is selected, emit all eligible serving-safe document content in full_document mode.",
+      "If tables are selected, emit those anchored tables to the TPDX candidate/review path first and record their consumption state.",
+      "Then emit only the remaining eligible content in evidence_residual mode with the same mother-document version and co-source group."
+    ],
+    "ingestion_modes": {
+      "full_document": {
+        "applicability": "Default. Use when no tabular segment from the document is selected for TPDX.",
+        "scope": "All eligible serving-safe text, table, and VLM-derived text records from the governed document.",
+        "required_partition_mode": "none",
+        "tpdx_extraction_refs_must_be_empty": true
+      },
+      "evidence_residual": {
+        "applicability": "Use only when one or more anchored tabular segments from the same mother document are selected for TPDX.",
+        "scope": "Eligible serving-safe document content remaining after the selected table anchors are partitioned out.",
+        "required_partition_mode": "partitioned_table_extraction",
+        "allowed_tpdx_extraction_content_kinds": [
+          "table"
+        ],
+        "minimum_tpdx_consumption_state": "candidate_selected",
+        "tpdx_extraction_refs_required": true,
+        "excluded_anchor_refs_required": true,
+        "rule": "Selected TPDX table segments must not be emitted again as DEKG evidence records. The remaining content retains the same mother-document version and co-source group."
+      }
+    },
+    "package_required_fields": [
+      "schema_version",
+      "release_id",
+      "source_id",
+      "source_version",
+      "manifest_digest",
+      "lineage_ref",
+      "masking_status",
+      "serving_safe",
+      "records"
+    ],
+    "record_required_fields": [
+      "evidence_id",
+      "ingestion_mode",
+      "source_id",
+      "source_version",
+      "doc_id",
+      "block_id",
+      "chunk_id",
+      "anchor",
+      "content_kind",
+      "text",
+      "evidence_status",
+      "route_b_status",
+      "serving_safe",
+      "tpdx_partition",
+      "co_source"
+    ],
+    "record_nullable_fields": [
+      "language",
+      "section_title",
+      "page_or_slide",
+      "tpdx_partition.decision_id",
+      "tpdx_partition.tpdx_consumption_state",
+      "co_source.group_id"
+    ],
+    "allowed_content_kinds": [
+      "text",
+      "table",
+      "vlm_text"
+    ],
+    "required_source_ref_fields": [
+      "source_id",
+      "source_version",
+      "doc_id",
+      "block_id",
+      "chunk_id",
+      "anchor"
+    ],
+    "identity_rules": {
+      "evidence_id": "DEK_ plus SHA-256 of the canonical JSON tuple [dekg_evidence_identity_v1, ingestion_mode, source_id, source_version, doc_id, block_id, anchor, content_kind, chunk ordinal]. It is the stable handoff identity used by downstream derivatives.",
+      "doc_id": "Stable mother-document identity within one source_id and source_version; preserve across deterministic rebuilds of unchanged source content.",
+      "block_id": "Stable source-structure anchor within one doc_id; do not derive identity from display text alone.",
+      "chunk_id": "Deterministic from contract version, doc_id, block_id, chunking_rule_version, and chunk ordinal.",
+      "collision_behavior": "Reject duplicate evidence_id or composite identity source_id/source_version/doc_id/block_id/chunk_id unless byte-equivalent after canonical serialization.",
+      "alias_behavior": "Source aliases may aid lookup but never replace source_id or change record identity."
+    },
+    "missingness_rules": {
+      "nullable_fields": "Preserve explicit null when the source does not provide the value.",
+      "required_anchor": "Reject the record when no stable source anchor can be produced.",
+      "no_inference": "Do not invent document structure, diagnosis, cause, action, or topology scope to complete a record."
+    },
+    "tpdx_partition": {
+      "required_fields": [
+        "mode",
+        "decision_id",
+        "tpdx_extraction_refs",
+        "tpdx_extraction_content_kinds",
+        "tpdx_consumption_state",
+        "excluded_anchor_refs",
+        "overlap_with_tpdx_fact"
+      ],
+      "allowed_modes": [
+        "none",
+        "partitioned_table_extraction"
+      ],
+      "allowed_tpdx_consumption_states": [
+        "candidate_selected",
+        "reviewed",
+        "published"
+      ],
+      "overlap_with_tpdx_fact_must_be": false,
+      "mode_rules": {
+        "none": "Required for full_document. decision_id and tpdx_consumption_state are null; extraction/content-kind/excluded-anchor arrays are empty.",
+        "partitioned_table_extraction": "Required for evidence_residual. decision_id, table-only extraction refs, consumption state, and excluded table anchors are present and non-empty."
+      }
+    },
+    "co_source": {
+      "required_fields": [
+        "group_id",
+        "tpdx_extraction_refs",
+        "independent_corroboration"
+      ],
+      "full_document_rule": "group_id may be null and TPDX refs are empty when no content from the document is selected for TPDX.",
+      "evidence_residual_rule": "group_id and TPDX extraction refs are required and match the partition decision.",
+      "independent_corroboration_must_be": false,
+      "rule": "TPDX table output and DEKG residual from one mother document are co-source outputs and cannot count as independent corroboration."
+    },
+    "output_constraints": {
+      "route_family": "route_b_document",
+      "answer_type": "document_evidence",
+      "status": "evidence_only",
+      "evidence_type": "document_snippet",
+      "source_type": "serving_document",
+      "confirmed_diagnosis_allowed": false
+    }
+  },
+  "support_artifacts": {
+    "lifecycle": "derived_from_dekg_evidence",
+    "possible_representations": [
+      "document block",
+      "retrieval chunk",
+      "concept mention",
+      "adjacency edge"
+    ],
+    "required_derivation_reference": "evidence_id",
+    "definitions_status": "candidate_review",
+    "note": "Graph/index support shapes remain outside this ingestion contract and outside TPDX. They cannot replace DEKGEvidenceRecord as the governed lineage anchor."
+  },
+  "compatibility": {
+    "legacy_contract": "route_b_evidence_v2",
+    "preserved": [
+      "document_evidence_only semantics",
+      "source_id/doc_id/block_id/chunk_id/anchor provenance",
+      "route_b_document/document_evidence/evidence_only projection",
+      "support structures remain non-diagnostic"
+    ],
+    "changed": [
+      "DEKG is named explicitly as the knowledge asset.",
+      "Full-document ingestion is the default mode.",
+      "Evidence-residual mode is conditional on anchored table extraction for TPDX.",
+      "TPDX consumption state, excluded table anchors, and co-source rules are explicit.",
+      "DEKGEvidenceRecord replaces DocumentAsset as the governed handoff object and is not a graph node.",
+      "Path-shaped allowed_source_ids are replaced by governed source and release identifiers."
+    ],
+    "runtime_binding": "not_authorized_pending_activation"
+  }
+}

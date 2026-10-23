@@ -1,0 +1,236 @@
+{
+  "$id": "faultdx_data_package_v1",
+  "title": "FaultDx governed data package manifest contract",
+  "version": "1.0.0",
+  "date": "2026-08-11",
+  "status": "FROZEN",
+  "owner": "data_contract_engineer",
+  "schema_ref": "faultdx_data_package_v1.schema.json",
+  "description": "Defines one common package envelope without merging the TPDX, DEKG, and FHKB record contracts or route semantics.",
+  "scope": {
+    "one_package_one_asset": true,
+    "record_payloads_may_mix_assets": false,
+    "real_data_required_for_contract_validation": false,
+    "data_rc_aggregation_owned_here": false,
+    "runtime_binding_owned_here": false
+  },
+  "package_profiles": {
+    "TPDX": {
+      "route_family": "route_a_structured",
+      "record_contract_id": "tpdx_kg_schema_v4_2",
+      "record_contract_schema": "contracts/schema/tpdx_kg_schema_v4_2.schema.json",
+      "allowed_package_types": [
+        "tpdx_topology_component",
+        "tpdx_diagnostic_component",
+        "tpdx_replacement_material_component",
+        "tpdx_release"
+      ],
+      "content_semantics": "reviewed_structured_fact",
+      "promotion_allowed": true,
+      "note": "Schema 4.2 is the selected TPDX working baseline. Schema 4.1 is a rollback/comparison baseline, not an alternative package contract."
+    },
+    "DEKG": {
+      "route_family": "route_b_document",
+      "record_contract_id": "dekg_evidence_v2",
+      "record_contract_schema": "contracts/evidence/dekg_evidence_v2.schema.json",
+      "allowed_package_types": [
+        "dekg_evidence"
+      ],
+      "content_semantics": "evidence_only",
+      "promotion_allowed": false
+    },
+    "FHKB": {
+      "route_family": "route_c_case",
+      "record_contract_id": "fhkb_case_v1",
+      "record_contract_schema": "contracts/case/fhkb_case_v1.schema.json",
+      "allowed_package_types": [
+        "fhkb_case"
+      ],
+      "content_semantics": "candidate",
+      "promotion_allowed": false
+    }
+  },
+  "identity_rules": {
+    "canonical_json": "UTF-8 RFC 8785 JSON Canonicalization Scheme with no insignificant whitespace.",
+    "package_id": {
+      "inputs": [
+        "manifest_version",
+        "knowledge_asset",
+        "package_type",
+        "release_id",
+        "source.source_id",
+        "source.source_version",
+        "record_contract.contract_id"
+      ],
+      "encoding": "Canonical JSON array in the listed order.",
+      "digest": "SHA-256 lowercase hexadecimal",
+      "output": "PKG_<64 lowercase hexadecimal characters>",
+      "mutable_fields_excluded": [
+        "decision",
+        "artifacts",
+        "masking_evidence",
+        "component_refs",
+        "content_digest"
+      ]
+    },
+    "content_digest": {
+      "input": "The complete package manifest after package_id is set, excluding only the top-level content_digest field.",
+      "encoding": "Canonical JSON object.",
+      "digest": "sha256:<64 lowercase hexadecimal characters>",
+      "self_referential": false
+    },
+    "artifact_id": {
+      "rule": "ART_ plus SHA-256 of the canonical JSON array [artifact_role, relative_path].",
+      "collision_behavior": "Reject the package when one artifact_id names different role/path content or a path is repeated under another artifact_id."
+    },
+    "duplicate_package_behavior": "Byte-equivalent canonical manifests with the same package_id and content_digest are idempotent. The same package_id with a different content_digest is an identity collision and fails closed."
+  },
+  "path_rules": {
+    "format": "Portable POSIX-style package-relative paths only.",
+    "reject": [
+      "absolute paths",
+      "Windows drive paths",
+      "backslashes",
+      "empty path segments",
+      ". or .. segments",
+      "paths escaping the package root"
+    ],
+    "symlink_rule": "A production validator resolves the target without following it outside the package root and rejects an escaping symlink."
+  },
+  "artifact_rules": {
+    "required_integrity": "Every artifact is verified against its declared byte_size and SHA-256 before record-contract validation.",
+    "record_count": "record_count is required for record_payload, exclusions, and review_queue artifacts; it is null for artifacts without records.",
+    "record_payload_count": "Component and DEKG/FHKB packages contain exactly one record_payload artifact. A tpdx_release contains no record_payload artifact.",
+    "unknown_media_type": "Reject unless a later reviewed contract version allowlists it."
+  },
+  "masking_rules": {
+    "reference_only": true,
+    "immutable_manifest": true,
+    "package_integrity_digest": "SHA-256 over the immutable masking manifest bytes; historical hashes inside that manifest remain unchanged source metadata.",
+    "coverage": "Every artifact with requires_masking=true is named by exactly one effective masking reference. Every covered_artifact_id must resolve to an artifact in the same package. Overlapping effective coverage is rejected as ambiguous.",
+    "multiple_runs": "A package may reference multiple masking runs when their effective covered artifact sets are disjoint.",
+    "partial_runs": "One masking reference may cover only part of the package, but total effective coverage must cover every artifact that requires masking.",
+    "state_separation": "Masking success never sets serving_safe, route_eligible, review_status, promotion_status, package_status, or release status."
+  },
+  "component_rules": {
+    "tpdx_release_only": "Only tpdx_release packages may contain component_refs.",
+    "allowed_components": [
+      "tpdx_topology_component",
+      "tpdx_diagnostic_component",
+      "tpdx_replacement_material_component"
+    ],
+    "reference_content": [
+      "package_id",
+      "package_type",
+      "manifest_path",
+      "manifest_digest",
+      "acceptance_status"
+    ],
+    "acceptance": "Every referenced component must be accepted, match its referenced manifest digest, use Schema 4.2, and belong to the same release_id.",
+    "component_type_cardinality": "A tpdx_release may reference zero or one accepted package of each allowed component type. Two references with the same package_type are rejected even when their package IDs differ.",
+    "future_partitioning": "Supporting multiple packages of one component type requires a later contract version with an explicit partition identity, non-overlap rules, and deterministic composition order.",
+    "copy_records": false,
+    "dependency_behavior": "Reject missing, conflicting, self-referential, circular, incompatible, unaccepted, or duplicate component references."
+  },
+  "decision_rules": {
+    "independent_states": [
+      "masking status",
+      "serving_safe",
+      "route_eligible",
+      "review_status",
+      "promotion_status",
+      "package_status",
+      "release_decision_id"
+    ],
+    "released_requirements": [
+      "package_status is released",
+      "review_status is reviewed",
+      "serving_safe is true",
+      "route_eligible is true",
+      "release_decision_id is non-null",
+      "all required masking evidence is verified",
+      "all artifacts and record payloads validate",
+      "all TPDX component references are accepted"
+    ],
+    "route_boundaries": {
+      "TPDX": "promotion_status may be candidate or reviewed; a released package requires reviewed.",
+      "DEKG": "promotion_status is not_applicable and content remains evidence_only.",
+      "FHKB": "promotion_status is not_applicable and content remains candidate."
+    },
+    "failure": "Validation failure never downgrades, promotes, accepts, or releases a package automatically."
+  },
+  "validation_order": [
+    "Parse JSON and validate faultdx_data_package_v1.schema.json.",
+    "Verify manifest_version and the knowledge_asset/route/package_type/record_contract allowlist.",
+    "Recompute package_id from the governed identity tuple.",
+    "Resolve every package-relative path inside the package root and reject collisions or escapes.",
+    "Verify the lineage source manifest exists and matches lineage.source_manifest_digest.",
+    "Verify artifact existence, byte_size, and SHA-256.",
+    "Verify masking-manifest existence, SHA-256, run_id, review state, and exact effective artifact coverage.",
+    "Validate the record_payload with the selected route-specific record contract.",
+    "For DEKG and FHKB, require the route payload release, source, lineage, masking, and serving fields to agree with the common envelope mappings.",
+    "Resolve TPDX component references, verify identity/digest/status/release compatibility, and detect cycles.",
+    "Validate decision-state prerequisites and route promotion boundaries.",
+    "Recompute content_digest and check duplicate package identity behavior."
+  ],
+  "compatibility": {
+    "DEKG": {
+      "mapping": {
+        "release_id": "release_id",
+        "source_id": "source.source_id",
+        "source_version": "source.source_version",
+        "manifest_digest": "lineage.source_manifest_digest",
+        "lineage_ref": "lineage.lineage_ref",
+        "masking_status": "masking_evidence[*].masking_status",
+        "serving_safe": "decision.serving_safe",
+        "records": "record_payload artifact validated by dekg_evidence_v2"
+      },
+      "binding_rule": "The wrapped dekg_evidence_v2 payload must exactly match release_id, source_id, source_version, manifest_digest/lineage source digest, lineage_ref, and serving_safe. Its masking_status must be compatible with the effective masking evidence covering the record payload.",
+      "frozen_contract_modified": false
+    },
+    "FHKB": {
+      "mapping": {
+        "release_id": "release_id",
+        "source_id": "source.source_id",
+        "source_version": "source.source_version",
+        "manifest_digest": "lineage.source_manifest_digest",
+        "lineage_ref": "lineage.lineage_ref",
+        "masking_status": "masking_evidence[*].masking_status",
+        "serving_safe": "decision.serving_safe",
+        "records": "record_payload artifact validated by fhkb_case_v1"
+      },
+      "binding_rule": "The wrapped fhkb_case_v1 payload must exactly match release_id, source_id, source_version, manifest_digest/lineage source digest, lineage_ref, and serving_safe. Its masking_status must be compatible with the effective masking evidence covering the record payload.",
+      "frozen_contract_modified": false
+    },
+    "TPDX": {
+      "mapping": "Each component record_payload validates directly against the self-contained Schema 4.2 contract; the release package references accepted component manifests without copying records.",
+      "selected_contract": "tpdx_kg_schema_v4_2",
+      "schema_4_1_role": "rollback_and_comparison_only"
+    }
+  },
+  "migration": {
+    "phase_1": "Producers continue emitting their existing route-specific packages; the common envelope is optional and offline.",
+    "phase_2": "Reviewed adapters wrap one existing package at a time and preserve the original record payload and manifest evidence.",
+    "phase_3": "After consumer and independent review, package validators may require the common envelope at controlled boundaries.",
+    "no_in_place_rewrite": true
+  },
+  "rollback": {
+    "action": "Remove the optional common-envelope binding and resume direct use of the unchanged route-specific contract and masking manifest.",
+    "data_rewrite_required": false,
+    "schema_4_1": "Retained only as the governed TPDX comparison/rollback baseline; rollback activation is a separate decision."
+  },
+  "affected_consumers": [
+    "masking and ingestion producers",
+    "TPDX component and release builders",
+    "DEKG evidence producer and index preparation",
+    "FHKB case producer and index preparation",
+    "package validators",
+    "Data RC preparation"
+  ],
+  "implementation_handoff": {
+    "owner_after_review": "data_pipeline_kg_engineer",
+    "prerequisite": "The FROZEN v1 contract is the approved envelope boundary. Production implementation requires a separately allocated pipeline/KG task with an explicit write set and all recorded implementation conditions.",
+    "future_scope": "Shared loader/validator, producer adapters, filesystem digest verification, dependency resolution, and governed real-package validation.",
+    "excluded_now": "No producer, runtime, graph, index, Data RC, or real-data change is authorized by this contract-design task."
+  }
+}

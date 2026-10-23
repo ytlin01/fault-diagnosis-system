@@ -1,0 +1,136 @@
+﻿version: 1
+
+normalization:
+  replacements:
+    倉: 仓
+    軸: 轴
+    通訊: 通讯
+    異常: 异常
+    報警: 报警
+    失敗: 失败
+    無: 无
+    盤: 盘
+    模块: 模组
+    Ｚ: Z
+    ｚ: z
+    Ｘ: X
+    ｘ: x
+    Ｙ: Y
+    ｙ: y
+    Ｕ: U
+    ｕ: u
+
+feature_terms:
+  modules:
+    上料仓:
+      aliases: [上料仓, 上料仓模组, 上料仓模块, 上料倉, 上料倉模組, 上料]
+    下料仓:
+      aliases: [下料仓, 下料仓模组, 下料仓模块, 下料倉, 下料倉模組, 下料]
+    取料模组:
+      aliases: [取料模组, 取料模块, 取料]
+    电批:
+      aliases: [电批, 批头]
+    机器人:
+      aliases: [机器人, 机械手, 四轴机器人, 六轴机器人]
+    料盘:
+      aliases: [料盘, tray, Tray, TRAY, 料盤]
+    cowling:
+      aliases: [cowling, Cowling, COWLING]
+    夹爪:
+      aliases: [夹爪, 夾爪]
+    气缸:
+      aliases: [气缸, 氣缸]
+    传感器:
+      aliases: [传感器, 感应器, 感應器]
+
+  axes:
+    X轴:
+      aliases: [X轴, x轴, X軸, x軸]
+    Y轴:
+      aliases: [Y轴, y轴, Y軸, y軸]
+    Z轴:
+      aliases: [Z轴, z轴, Z軸, z軸]
+    U轴:
+      aliases: [U轴, u轴, U軸, u軸]
+
+  components:
+    伺服驱动器:
+      aliases: [伺服驱动器, 伺服驅動器, 驱动器, 驅動器]
+    控制卡:
+      aliases: [控制卡, 轴卡, 軸卡]
+    锁紧气缸:
+      aliases: [锁紧气缸, 鎖緊氣缸, 锁紧]
+    托Tray气缸:
+      aliases: [托tray气缸, 托Tray气缸, 托盤氣缸]
+    到位传感器:
+      aliases: [到位传感器, 到位感应器, 到位感應器]
+
+  fault_modes:
+    通讯异常:
+      aliases: [通讯异常, 通訊異常, 掉线, 掉線]
+      parent: 异常
+    报警:
+      aliases: [报警, 報警]
+      parent: 异常
+    异常:
+      aliases: [异常, 異常]
+    使能失败:
+      aliases: [使能失败, 使能失敗, 掉使能]
+      parent: 异常
+    回零失败:
+      aliases: [回零失败, 回零失敗, 归零失败, 歸零失敗]
+      parent: 异常
+    运动超时:
+      aliases: [运动超时, 運動超時, 超时, 超時]
+      parent: 异常
+    超限:
+      aliases: [超限, 极限报警, 極限報警, 正极限报警, 负极限报警]
+      parent: 报警
+    信号异常:
+      aliases: [信号异常, 信號異常, 无信号, 無信號]
+      parent: 异常
+    伸出异常:
+      aliases: [伸出异常, 伸出超时, 伸出報警, 伸出报警]
+      parent: 异常
+    缩回异常:
+      aliases: [缩回异常, 縮回異常, 缩回超时]
+      parent: 异常
+    NG:
+      aliases: [组装NG, 組裝NG, 计算NG, 計算NG]
+      parent: 异常
+    刮伤:
+      aliases: [刮伤, 刮傷]
+      parent: 异常
+    无料:
+      aliases: [无料, 無料, 缺料]
+      parent: 异常
+
+review:
+  min_shared_features: 2
+  max_candidates_per_bucket: 12
+  feature_weights:
+    modules: 3
+    axes: 3
+    components: 2
+    fault_modes: 2
+  generic_fault_modes: [异常, 报警]
+  semantic_candidates:
+    enabled: true
+    min_score: 0.75
+    require_any_feature_overlap: true
+    require_shared_module: false
+    char_ngram_n: [2, 3]
+    weights:
+      char_ngram: 0.72
+      feature: 0.28
+  bucket_priority_features: [modules, axes, components, fault_modes]
+  primary_bucket_strategy:
+    default: unclassified
+    feature_priority:
+      modules: [cowling, 上料仓, 下料仓, 取料模组, 电批, 机器人, 料盘, 夹爪, 气缸, 传感器]
+      axes: [Z轴, X轴, Y轴, U轴]
+      components: [锁紧气缸, 托Tray气缸, 控制卡, 到位传感器, 伺服驱动器]
+      fault_modes: [NG, 刮伤, 通讯异常, 报警, 使能失败, 超限, 运动超时, 无料, 信号异常, 异常]
+    sub_bucket_features: [axes, components, fault_modes, modules]
+
+

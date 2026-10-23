@@ -1,0 +1,16 @@
+# Reasoning layer configuration (TASK-021).
+# Active provider type is resolved at runtime from FAULTDX_PROVIDER_TYPE env var;
+# values here are defaults used when the env var is not set.
+
+reasoning:
+  provider:
+    # type mirrors base.yaml provider.type — overridden by FAULTDX_PROVIDER_TYPE
+    type: stub            # stub | ollama | company_api
+    temperature: 0.1
+    max_tokens: 1024
+
+  synthesizer:
+    prompt_path: services/reasoning/prompts/diagnosis_synthesis.txt
+    # Return insufficient_data immediately when KG items list is empty,
+    # without spending an LLM call.
+    insufficient_data_on_empty_items: true

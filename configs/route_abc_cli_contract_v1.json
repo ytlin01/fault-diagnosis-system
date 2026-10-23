@@ -1,0 +1,83 @@
+{
+  "schema_version": "route_abc_unified_cli_contract_v1",
+  "version": "1.0.0",
+  "task": "TASK-032_route_abc_unified_cli_contract_v1",
+  "consumer": "scripts/cli_route_abc.py",
+  "purpose": "Official local smoke/debug CLI contract for Route A/B/C. CLI is a harness and is not a business-layer dependency for UI/API.",
+  "default_outputs": {
+    "json": "synthesis_out_abc.json",
+    "rendered_answer_text": null
+  },
+  "routes": {
+    "a": {
+      "route_family": "route_a_structured",
+      "execution": "full_route_graph",
+      "modes": [
+        "manual_query"
+      ],
+      "default_available_sources": [
+        "reviewed_diagnostic_chain_v1"
+      ],
+      "fixture": null,
+      "query_bank": null
+    },
+    "b": {
+      "route_family": "route_b_document",
+      "execution": "dry_run_smoke_harness",
+      "modes": [
+        "manual_query",
+        "serving_safe_fixture",
+        "query_bank"
+      ],
+      "default_available_sources": [
+        "data/serving_unstructured_vlm"
+      ],
+      "fixture": {
+        "name": "route_b",
+        "path": "data/eval/route_b/route_b_serving_safe_fixtures_v1.json"
+      },
+      "query_bank": {
+        "name": "route_b",
+        "path": "data/eval/route_b/route_b_query_bank_v1.json"
+      }
+    },
+    "c": {
+      "route_family": "route_c_case_governance",
+      "execution": "dry_run_smoke_harness",
+      "modes": [
+        "manual_query",
+        "serving_safe_fixture",
+        "query_bank"
+      ],
+      "default_available_sources": [
+        "rag_fp_case_candidates_v1"
+      ],
+      "fixture": {
+        "name": "route_c",
+        "path": "data/eval/route_c/route_c_serving_safe_fixtures_v1.json"
+      },
+      "query_bank": {
+        "name": "route_c",
+        "path": "data/eval/route_c/route_c_query_bank_v1.json"
+      }
+    }
+  },
+  "eval_directory_migration": {
+    "status": "route_b_route_c_completed",
+    "reason": "Route B/C smoke and benchmark eval files were migrated to route-scoped directories before team handoff.",
+    "future_target_dirs": [
+      "data/eval/route_a",
+      "data/eval/route_b",
+      "data/eval/route_c"
+    ],
+    "migrated_dirs": [
+      "data/eval/route_b",
+      "data/eval/route_c"
+    ]
+  },
+  "source_boundary": {
+    "route_b_status": "document_evidence + evidence_only",
+    "route_c_status": "case_reference + candidate",
+    "route_a_status": "reviewed only when the full Route A pipeline returns governed structured output"
+  }
+}

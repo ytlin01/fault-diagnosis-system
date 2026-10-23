@@ -1,0 +1,40 @@
+# Non-CAD device nodes for equipment not modeled in the STEP file.
+# Nodes are merged as :Component with source="device_registry" — distinguishable
+# from CAD-derived nodes (source absent or "cad_step").
+#
+# ID scheme: DR_<SHORTNAME> — avoids conflict with CAD format C_9494xxx.
+#
+# Load order after adding entries:
+#   1. python scripts/build_graph/load_device_registry.py
+#   2. Add matching aliases to configs/diagnostic_asset_bridge_aliases.yaml
+#   3. python scripts/build_graph/build_diagnostic_asset_bridge.py
+#   4. python scripts/build_graph/load_triggers_to_neo4j.py --wipe-triggers
+
+devices:
+
+  # --- Layer A: mechanical / pneumatic fixtures (TASK-020B, 2026-05-14) ---
+  # These 4 devices are physical fixtures confirmed absent from the STEP file.
+
+  - id: DR_COWLING_ASSEMBLY_STATION
+    name: Cowling组装工位
+    source: device_registry
+    device_category: mechanical
+    description: Cowling assembly fixture — lift cylinders, arrival/departure sensors
+
+  - id: DR_FLEX_SCREW_STATION
+    name: Flex螺丝锁付工位
+    source: device_registry
+    device_category: mechanical
+    description: Flex screw fastening station — lift cylinders
+
+  - id: DR_PICK_MODULE
+    name: 取料模块
+    source: device_registry
+    device_category: mechanical
+    description: Pick module — pneumatic pressure monitoring
+
+  - id: DR_SCREW_FEEDER
+    name: 螺丝供料器
+    source: device_registry
+    device_category: mechanical
+    description: Screw feeder mechanism — ready signal monitoring

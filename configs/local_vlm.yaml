@@ -1,0 +1,35 @@
+version: 1
+default_profile: e2a
+
+profiles:
+  e2a:
+    provider: ollama
+    model: qwen2.5vl:7b
+    endpoint: http://localhost:11434
+    ollama_models_dir: D:/Ollama/models
+    startup_command: scripts/bootstrap/start_ollama_e2a.ps1
+    output_dir: data/processed/unstructured_vlm
+    asset_roots:
+      - data/processed/unstructured_assets
+      - data/raw/unstructured_input/mineru_output
+      - data/raw/unstructured_input
+    limit: 3
+    timeout_seconds: 180
+    existing_text_limit: 1200
+    allow_non_local_endpoint: false
+
+  e3:
+    provider: ollama
+    model: qwen3vl:30b
+    endpoint: http://localhost:11434
+    ollama_models_dir: null
+    startup_command: ollama serve
+    output_dir: data/processed/unstructured_vlm
+    asset_roots:
+      - data/processed/unstructured_assets
+      - data/raw/unstructured_input/mineru_output
+      - data/raw/unstructured_input
+    limit: 0
+    timeout_seconds: 300
+    existing_text_limit: 1200
+    allow_non_local_endpoint: false

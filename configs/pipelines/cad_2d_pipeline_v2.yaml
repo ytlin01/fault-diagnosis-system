@@ -1,0 +1,48 @@
+schema_version: "cad-2d-pipeline-v2.0-draft"
+identifier:
+  strip_suffixes: ["_masked"]
+classification:
+  allowed_decisions: ["ASM", "PRT", "EXCLUDE", "UNKNOWN"]
+  decision_aliases:
+    asm: "ASM"
+    prt: "PRT"
+    exclude: "EXCLUDE"
+    unresolved: "UNKNOWN"
+  unreviewed_note: "not_human_reviewed"
+field_extraction:
+  default_profile: "synthetic_default"
+  profiles:
+    synthetic_default:
+      page_index: 0
+      regions:
+        drawing_title: [0.0, 0.0, 300.0, 50.0]
+        project_name: [0.0, 50.0, 300.0, 100.0]
+bom:
+  page_index: 0
+  approved_parent_decision: "ASM"
+  item_number_pattern: "^[0-9]+$"
+  reviewed_word_bundle_lineage:
+    source_review_file_sha256: "997e28ef1252a967c6433c3c41064ce0bfab5613a4be332282f844c60e6c98a1"
+    projection_file_sha256: "4082f1d4a98d7ea01d576c2efef2b53bbd479ede0ac7184377e98b3d88866dc0"
+    b00_bundle_result_sha256: "893ef0b29a4bb89d952e9ec7c1975b9d4362cb1992c63800112cc25a2c09745c"
+  header_keywords:
+    item: ["item", "序号", "项目号"]
+    part_number: ["part number", "零件号", "文件名称"]
+    description: ["description", "说明"]
+    quantity: ["quantity", "qty", "数量"]
+  thresholds:
+    header_y_tolerance: 8.0
+    row_y_tolerance: 6.0
+    item_anchor_tolerance: 8.0
+    quantity_anchor_tolerance: 20.0
+    min_header_matches: 3
+    min_quantity: 1
+    max_quantity: 100000
+audit:
+  blocking_severities: ["error"]
+  suspicious_identifier_pattern: "^[A-Za-z0-9][A-Za-z0-9._ /-]*$"
+  override_decision_states: ["accepted", "rejected"]
+relationships:
+  asm_decision: "ASM"
+  prt_decision: "PRT"
+  unknown_decision: "UNKNOWN"

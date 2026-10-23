@@ -1,0 +1,485 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fhkb_case_v1.schema.json",
+  "title": "FaultDx FHKB Canonical Case Package v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "release_id",
+    "source_id",
+    "source_version",
+    "manifest_digest",
+    "lineage_ref",
+    "masking_status",
+    "serving_safe",
+    "records"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "fhkb_case_v1"
+    },
+    "release_id": {
+      "$ref": "#/$defs/nonempty"
+    },
+    "source_id": {
+      "$ref": "#/$defs/nonempty"
+    },
+    "source_version": {
+      "$ref": "#/$defs/nonempty"
+    },
+    "manifest_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "lineage_ref": {
+      "$ref": "#/$defs/nonempty"
+    },
+    "masking_status": {
+      "enum": [
+        "masked",
+        "not_required",
+        "reviewed_masked"
+      ]
+    },
+    "serving_safe": {
+      "const": true
+    },
+    "producer_commit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/case_record"
+      }
+    }
+  },
+  "$defs": {
+    "nonempty": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nullable_nonempty": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/nonempty"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "string_list": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/nonempty"
+      }
+    },
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "source_version",
+        "source_record_id",
+        "anchor",
+        "legacy_source",
+        "legacy_record_index",
+        "legacy_record_number",
+        "legacy_record_id_field",
+        "legacy_record_id_value"
+      ],
+      "properties": {
+        "source_id": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "source_version": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "source_record_id": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "anchor": {
+          "$ref": "#/$defs/nullable_nonempty"
+        },
+        "legacy_source": {
+          "$ref": "#/$defs/nullable_nonempty"
+        },
+        "legacy_record_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "legacy_record_number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "legacy_record_id_field": {
+          "$ref": "#/$defs/nullable_nonempty"
+        },
+        "legacy_record_id_value": {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "evidence_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_count",
+        "total_dt_mins",
+        "risk_counts",
+        "status_counts",
+        "qpl_values",
+        "date_range"
+      ],
+      "properties": {
+        "event_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "total_dt_mins": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "risk_counts": {
+          "$ref": "#/$defs/count_map"
+        },
+        "status_counts": {
+          "$ref": "#/$defs/count_map"
+        },
+        "qpl_values": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "date_range": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "start",
+            "end"
+          ],
+          "properties": {
+            "start": {
+              "$ref": "#/$defs/nullable_nonempty"
+            },
+            "end": {
+              "$ref": "#/$defs/nullable_nonempty"
+            }
+          }
+        }
+      }
+    },
+    "count_map": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "case_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "case_version",
+        "derivation_rule_version",
+        "source_id",
+        "source_version",
+        "source_record_ids",
+        "source_refs",
+        "case_type",
+        "case_status",
+        "publication_status",
+        "route_target",
+        "serving_safe",
+        "review_maturity",
+        "phenomenon",
+        "candidate_causes",
+        "candidate_actions",
+        "temporal_context",
+        "equipment_context",
+        "evidence_summary",
+        "field_authority",
+        "legacy_context",
+        "warnings"
+      ],
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "pattern": "^FHC_[0-9a-f]{64}$"
+        },
+        "case_version": {
+          "const": 1
+        },
+        "derivation_rule_version": {
+          "const": "fhkb_case_identity_v1"
+        },
+        "source_id": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "source_version": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "source_record_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonempty"
+          }
+        },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/source_ref"
+          }
+        },
+        "case_type": {
+          "enum": [
+            "structured_case_candidate",
+            "field_history_case_candidate"
+          ]
+        },
+        "case_status": {
+          "const": "candidate"
+        },
+        "publication_status": {
+          "const": "candidate_only"
+        },
+        "route_target": {
+          "const": "rag_case_pool"
+        },
+        "serving_safe": {
+          "const": true
+        },
+        "review_maturity": {
+          "enum": [
+            "unreviewed",
+            "source_reviewed",
+            "domain_reviewed"
+          ]
+        },
+        "phenomenon": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "observed_texts",
+            "normalized_text"
+          ],
+          "properties": {
+            "observed_texts": {
+              "$ref": "#/$defs/string_list"
+            },
+            "normalized_text": {
+              "$ref": "#/$defs/nullable_nonempty"
+            }
+          }
+        },
+        "candidate_causes": {
+          "$ref": "#/$defs/string_list"
+        },
+        "candidate_actions": {
+          "$ref": "#/$defs/string_list"
+        },
+        "temporal_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "event_time",
+            "precision",
+            "timezone"
+          ],
+          "properties": {
+            "event_time": {
+              "$ref": "#/$defs/nullable_nonempty"
+            },
+            "precision": {
+              "enum": [
+                "unknown",
+                "date",
+                "datetime",
+                "range"
+              ]
+            },
+            "timezone": {
+              "$ref": "#/$defs/nullable_nonempty"
+            }
+          }
+        },
+        "equipment_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "device_scope",
+            "station_id",
+            "module_id",
+            "component_id",
+            "subcomponent_id"
+          ],
+          "properties": {
+            "device_scope": {
+              "$ref": "#/$defs/nullable_nonempty"
+            },
+            "station_id": {
+              "$ref": "#/$defs/nullable_nonempty"
+            },
+            "module_id": {
+              "$ref": "#/$defs/nullable_nonempty"
+            },
+            "component_id": {
+              "$ref": "#/$defs/nullable_nonempty"
+            },
+            "subcomponent_id": {
+              "$ref": "#/$defs/nullable_nonempty"
+            }
+          }
+        },
+        "evidence_summary": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/evidence_summary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "field_authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "phenomenon_observed",
+            "phenomenon_normalized",
+            "candidate_causes",
+            "candidate_actions",
+            "temporal_context",
+            "equipment_context",
+            "evidence_summary"
+          ],
+          "properties": {
+            "phenomenon_observed": {
+              "const": "source_observed"
+            },
+            "phenomenon_normalized": {
+              "const": "normalized_candidate"
+            },
+            "candidate_causes": {
+              "const": "historical_candidate"
+            },
+            "candidate_actions": {
+              "const": "historical_candidate"
+            },
+            "temporal_context": {
+              "const": "source_observed_or_normalized"
+            },
+            "equipment_context": {
+              "const": "source_observed_or_normalized"
+            },
+            "evidence_summary": {
+              "const": "source_aggregate"
+            }
+          }
+        },
+        "legacy_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "legacy_source_type",
+            "relation_type",
+            "filter_basis_reason",
+            "not_for_kg_text2cypher"
+          ],
+          "properties": {
+            "legacy_source_type": {
+              "$ref": "#/$defs/nullable_nonempty"
+            },
+            "relation_type": {
+              "$ref": "#/$defs/nullable_nonempty"
+            },
+            "filter_basis_reason": {
+              "$ref": "#/$defs/nullable_nonempty"
+            },
+            "not_for_kg_text2cypher": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        },
+        "warnings": {
+          "$ref": "#/$defs/string_list"
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "phenomenon": {
+              "properties": {
+                "observed_texts": {
+                  "minItems": 1
+                }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "phenomenon": {
+              "properties": {
+                "normalized_text": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "candidate_causes": {
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "candidate_actions": {
+              "minItems": 1
+            }
+          }
+        }
+      ]
+    }
+  }
+}

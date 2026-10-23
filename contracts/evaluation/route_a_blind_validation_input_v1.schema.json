@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faultdx/contracts/evaluation/route_a_blind_validation_input_v1.schema.json",
+  "title": "Route A blind validation input",
+  "description": "Governed query-only input for a masked Route A blind-validation partition. Expected causes, actions, and answers are prohibited from this versioned input.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "dataset_id", "partition", "governance", "source", "query_template", "cases"],
+  "properties": {
+    "schema_version": {"const": "tpdx_blind_query_bank_v1"},
+    "dataset_id": {"type": "string", "minLength": 1},
+    "partition": {"const": "blind"},
+    "governance": {"$ref": "#/$defs/governance"},
+    "source": {"$ref": "#/$defs/source"},
+    "query_template": {"type": "string", "minLength": 1, "pattern": "\\{phenomenon\\}"},
+    "cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/case"}}
+  },
+  "$defs": {
+    "governance": {"type": "object", "additionalProperties": false, "required": ["source_classification", "serving_eligible", "kg_ingestion_eligible", "label_maturity", "blind_key_policy"], "properties": {"source_classification": {"const": "masked_validation_only"}, "serving_eligible": {"const": false}, "kg_ingestion_eligible": {"const": false}, "label_maturity": {"const": "assumed_label_provisional"}, "blind_key_policy": {"type": "string", "minLength": 1}}},
+    "source": {"type": "object", "additionalProperties": false, "required": ["workbook", "sheet", "source_row_count"], "properties": {"workbook": {"type": "string", "minLength": 1}, "sheet": {"type": "string", "minLength": 1}, "source_row_count": {"type": "integer", "minimum": 1}}},
+    "case": {"type": "object", "additionalProperties": false, "required": ["case_id", "source_row", "phenomenon"], "properties": {"case_id": {"type": "string", "pattern": "^C1STN-BLIND-[0-9]{3}$"}, "source_row": {"type": "integer", "minimum": 1}, "phenomenon": {"type": "string", "minLength": 1}}}
+  }
+}

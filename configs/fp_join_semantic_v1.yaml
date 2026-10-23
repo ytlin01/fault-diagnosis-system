@@ -1,0 +1,23 @@
+version: 1
+
+provider:
+  type: ollama
+  host: http://localhost:11434
+  model: nomic-embed-text:latest
+  models_dir: null
+  batch_size: 64
+  timeout_sec: 120
+
+candidate_generation:
+  top_k_per_downtime_fp: 3
+  min_embedding_similarity: 0.50
+  min_final_score: 0.75
+  max_candidate_records: 2000
+  require_any_feature_overlap: false
+  feature_bonus_per_shared_group: 0.015
+  weights:
+    embedding_similarity: 0.86
+    feature_similarity: 0.14
+
+routing:
+  semantic_candidates_are_review_only: true

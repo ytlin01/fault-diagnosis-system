@@ -1,0 +1,97 @@
+﻿{
+  "schema_version": "route_c_source_boundary_v1",
+  "owner_task": "TASK-005_structured_aggregation",
+  "route_family": "route_c_case_governance",
+  "policy": {
+    "authoritative_sources_only": true,
+    "copy_processed_aggregates_to_serving": false,
+    "route_c_may_emit_confirmed_diagnosis": false,
+    "review_or_candidate_material_may_promote_in_place": false
+  },
+  "sources": {
+    "rag_fp_case_candidates_v1": {
+      "publication_status": "candidate_only",
+      "source_layer": "processed_aggregate",
+      "route_target_mapping": {
+        "route_marker_field": "route_target",
+        "route_marker_value": "rag_case_pool",
+        "route_target": "case_retrieval"
+      },
+      "field_allowlist": [
+        "rag_candidate_id",
+        "source_type",
+        "relation_type",
+        "route_target",
+        "field_fp_variants",
+        "field_fp_normalized",
+        "RC",
+        "PA",
+        "evidence",
+        "source_refs",
+        "filter_basis.reason"
+      ],
+      "promotion_rules": {
+        "may_promote_to_reviewed_diagnosis": false,
+        "may_promote_in_route_c": false,
+        "review_only": true
+      }
+    },
+    "structured_fp_join_v1_baseline": {
+      "publication_status": "review_only",
+      "source_layer": "processed_aggregate",
+      "route_target_mapping": {
+        "route_marker_field": "route_target",
+        "route_marker_value": "fp_review_governance",
+        "route_target": "fp_review_governance"
+      },
+      "field_allowlist": [
+        "mapping_id",
+        "EC",
+        "FP",
+        "standard_fp",
+        "field_fp_variants",
+        "RC",
+        "PA",
+        "review_status",
+        "kg_diagnosis_eligible",
+        "chain_status",
+        "route_target",
+        "route_reason",
+        "semantic_score",
+        "match_basis",
+        "source_refs",
+        "evidence"
+      ],
+      "promotion_rules": {
+        "may_promote_to_reviewed_diagnosis": false,
+        "may_promote_in_route_c": false,
+        "review_only": true
+      }
+    },
+    "error_codes_standardized_serving": {
+      "publication_status": "catalog_only",
+      "source_layer": "serving_structured",
+      "route_target_mapping": {
+        "route_marker_field": null,
+        "route_marker_value": null,
+        "route_target": "structured_catalog"
+      },
+      "field_allowlist": [
+        "Index",
+        "Item",
+        "Error code",
+        "Description"
+      ],
+      "promotion_rules": {
+        "may_promote_to_reviewed_diagnosis": false,
+        "may_promote_in_route_c": false,
+        "review_only": false,
+        "catalog_only": true
+      }
+    }
+  },
+  "blocked_material": {
+    "structured_fp_join_v1_semantic": "Intermediate semantic aggregate is not an authoritative Route C source. Use structured_fp_join_v1_baseline or rag_fp_case_candidates_v1 instead.",
+    "data/processed/aggregates": "Route C executors must consume named governed artifacts, not scan the aggregate directory or create near-duplicate serving copies."
+  }
+}

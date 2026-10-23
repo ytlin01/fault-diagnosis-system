@@ -1,0 +1,88 @@
+module_aliases:
+  M_9494198:
+    - "上料仓"
+    - "上料仓模组"
+    - "上料仓模块"
+    - "tray上料机构"
+    - "tray盘"
+    - "无tray盘"
+    - "tray盘满"
+  M_9494210:
+    - "副流道"
+    - "物流道1"
+    - "物流道2"
+    - "回流道1"
+    - "流道流出"
+    - "流道流入"
+    - "流出工位"
+  M_9494201:
+    - "点激光"
+    - "激光模组"
+  M_9494216:
+    - "ccd1"
+    - "ccd2"
+    - "ccd3"
+    - "ccd4"
+    - "定位ccd"
+    - "摄像头"
+  M_9494217:
+    - "ccd5"
+    - "ccd6"
+    - "ccd7"
+    - "复检ccd"
+    - "螺孔定位ccd"
+    - "螺丝定位ccd"
+
+component_aliases:
+  C_9496482:
+    - "plc"
+    - "plc通讯"
+  C_9494236:   # 摄像头装配体_监控摄像头 (M_9494216 — CCD1-4 camera head)
+    - "ccd1"
+    - "ccd2"
+    - "ccd3"
+    - "ccd4"
+    - "定位ccd"
+    - "料盘ccd"
+  C_9494227:   # 摄像头装配体2_监控摄像头 (M_9494217 — CCD5-7 camera head)
+    - "ccd5"
+    - "ccd6"
+    - "ccd7"
+    - "复检ccd"
+    - "螺孔定位ccd"
+    - "螺丝定位ccd"
+  C_9495788:   # AE1-387-D274-21300 升降模组 (M_9494198 — Z-axis lift, BOM confirmed)
+    - "z轴"
+    - "升降"
+    - "锁紧气缸"
+  C_9495789:   # AE1-387-D274-21400 (M_9494198 — Tray support mechanism, BOM 214xx series)
+    - "托tray气缸"
+    - "托tray"
+    - "tray下限"
+  C_9495792:   # CG7-方案1Tary (M_9494198 — Tray carrier)
+    - "无tray盘"
+    - "tray盘满"
+    - "下料仓"
+  C_9494267:   # AE1-387-D274-30000 副流道 main body (M_9494210 — conveyor)
+    - "阻挡气缸"
+    - "流道流出"
+    - "流道流入"
+    - "流出工位"
+
+  # --- Layer A: non-CAD device registry nodes (TASK-020B, 2026-05-14) ---
+  # These match the literal device-name prefix in fault phrases.
+
+  DR_COWLING_ASSEMBLY_STATION:
+    - "cowling组装工位"
+    - "Cowling组装工位"
+
+  DR_FLEX_SCREW_STATION:
+    - "flex螺丝锁付工位"
+    - "Flex螺丝锁付工位"
+    - "flex锁付工位"
+
+  DR_PICK_MODULE:
+    - "取料模块"
+
+  DR_SCREW_FEEDER:
+    - "螺丝供料器"

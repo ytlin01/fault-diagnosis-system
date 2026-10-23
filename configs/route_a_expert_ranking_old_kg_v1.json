@@ -1,0 +1,38 @@
+{
+  "config_id": "route_a_expert_ranking_old_kg_v1",
+  "candidate_id": "old_tpdx_baseline_v1",
+  "graph_version": "neo4j_cad_kg_v3_2",
+  "data_maturity": "assumed_label_provisional",
+  "retrieval": {
+    "canonicalizer": "services.canonicalization.prekg.canonicalize_query",
+    "executor": "services.retrieval.route_a_executor.execute_text2cypher",
+    "intent": "diagnostic_chain",
+    "anchor_priority": ["error_code", "component", "module", "fault_text"]
+  },
+  "ranking_rule": {
+    "order": "executor row order (graph storage order); no scoring",
+    "dedup": "by normalized cause text (NFKC + casefold + whitespace collapse); first occurrence fixes the rank; action ids are the ordered union of mapped action ids across that cause's rows",
+    "top_k": 5,
+    "unmapped_causes": "keep their rank slot with cause_id 'unmapped:<first 8 hex of sha256 of normalized cause text>'; never fabricate a canonical equivalence",
+    "unmapped_actions": "omitted from action_ids; graph element ids never enter the input",
+    "abstained": "true iff the retrieval returns zero ranked results; abstention is observed, never tuned"
+  },
+  "chain_export_query": "MATCH (ca:Cause)-[:RESOLVED_BY]->(act:Action) OPTIONAL MATCH (f:Fault)-[:HAS_CAUSE]->(ca) OPTIONAL MATCH (ec:ErrorCode)-[:INDICATES]->(f) RETURN elementId(ca) AS cause_element_id, ca.description AS cause_text, elementId(act) AS action_element_id, act.action_name AS action_text, collect(DISTINCT ec.code_id) AS error_codes ORDER BY cause_text, action_text",
+  "graph_count_queries": {
+    "error_code": "MATCH (n:ErrorCode) RETURN count(n) AS count",
+    "fault": "MATCH (n:Fault) RETURN count(n) AS count",
+    "cause": "MATCH (n:Cause) RETURN count(n) AS count",
+    "action": "MATCH (n:Action) RETURN count(n) AS count",
+    "action_step": "MATCH (n:ActionStep) RETURN count(n) AS count",
+    "triggers_components": "MATCH (c:Component)-[:TRIGGERS]->() RETURN count(DISTINCT c) AS count"
+  },
+  "expected_audit_counts": {
+    "error_code": 116,
+    "fault": 116,
+    "cause": 236,
+    "action": 218,
+    "action_step": 376,
+    "triggers_components": 11,
+    "reference": "legacy/tasks/TASK-018A_route_a_text2cypher_eval/eval_report_2026-05-18.md"
+  }
+}

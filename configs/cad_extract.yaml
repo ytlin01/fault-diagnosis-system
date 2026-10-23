@@ -1,0 +1,86 @@
+# CAD extract pipeline configuration
+# All dataset-specific paths, thresholds, and classification parameters live here.
+# No module in services/graph/cad_extract/ may hardcode these values.
+
+# ── Dataset ────────────────────────────────────────────────────────────────────
+dataset: "Y24_C1STN_Di"         # drives file naming: {dataset}_STP.STEP, {dataset}_BOM.xlsx
+
+# ── Paths ──────────────────────────────────────────────────────────────────────
+paths:
+  raw_dir: "data/raw/cad"
+  processed_dir: "data/processed"   # output dir = {processed_dir}/{dataset}_matched/
+
+# ── CLI ────────────────────────────────────────────────────────────────────────
+cli:
+  sample_size: 10                   # top-N parts printed to console after extraction
+
+# ── Mate inference (services/graph/cad_extract/relationships.py) ───────────────
+mate_inference:
+  # Hard limits to keep pure-Python loop cost bounded
+  max_siblings_per_parent: 100      # max sibling instances compared per parent NAUO
+  max_total_pairs: 200000           # hard cap on total pairs evaluated
+  max_cousin_pairs: 100000          # budget for the cross-subassembly spatial pass
+
+  # Spatial grid for the cousin pass (mm). ~1.5× a typical mechanical part.
+  spatial_grid_cell_mm: 100.0
+
+  # Face sampling limits per instance per pair (O(F_a × F_b) inner loop guard)
+  max_planes_per_instance: 60
+  max_cyls_per_instance: 40
+
+  # Per-(instance, mate_type) degree cap. Set to 0 to disable.
+  # An edge is kept if it survives the top-K of EITHER endpoint.
+  max_mates_per_instance_per_type: 50
+
+  # Confidence floor applied AFTER the degree cap.
+  # Set to 0.0 to keep every detected mate.
+  mate_confidence_threshold: 0.5
+
+  # Geometric tolerances (all in mm)
+  plane_dist_tol: 0.05              # coplanar face origin distance
+  plane_normal_tol: 0.01            # cosine deviation from ±1 for parallel normals
+  axis_parallel_tol: 0.01           # cross-product magnitude (sin θ) for cylinder axes
+  axis_offset_tol: 0.05             # lateral distance between cylinder axis lines
+  radius_rel_tol: 0.02              # fractional tolerance for radius matching (2%)
+  aabb_tol: 1.0                     # AABB inflation before overlap test
+
+# ── BOM matcher (services/graph/cad_extract/bom.py) ───────────────────────────
+bom_match:
+  fuzzy_cutoff: 0.80                # difflib similarity cutoff for fuzzy_candidates
+
+  filter_step_noise: true           # drop qty=0 products and numeric-only names
+
+  # Strip BOM/STEP revision suffixes before name matching. Set to null to disable.
+  strip_rev_suffix: '\s+REV[_\-]?[A-Z0-9]+$'
+
+  # BOM 名称 substrings (case-insensitive) that mark non-mechanical rows.
+  # These never appear in a mechanical STEP; absence is not a miss.
+  non_mechanical_keywords:
+    - "端子"
+    - "接线"
+    - "电缆"
+    - "线缆"
+    - "串口"
+    - "集线器"
+    - "扩展坞"
+    - "跳线"
+    - "排线"
+    - "USB"
+    - "HUB"
+    - "RS232"
+    - "RS485"
+    - "RS422"
+
+# ── Schema ─────────────────────────────────────────────────────────────────────
+schema:
+  version: "3.2"
+  schema_file: "contracts/schema/diagnostic_schema_v3_2.json"
+
+# ── Station (Option A: STEP root → Station) ────────────────────────────────────
+# The STEP root assembly product is mapped directly to one Station node.
+# station_id = dataset value above; station_type = PRODUCT.name from STEP root.
+# Known limitation: one STEP file produces exactly one Station.
+# Multi-unit or multi-model distinctions require a future station_registry.yaml.
+station:
+  source: "step_root"               # only supported value for now
+  station_id: "C1STN"               # explicit station id parsed from filename; overrides dataset default

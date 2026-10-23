@@ -1,0 +1,353 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dekg_evidence_v2.schema.json",
+  "title": "FaultDx DEKG Evidence Package v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "release_id",
+    "source_id",
+    "source_version",
+    "manifest_digest",
+    "lineage_ref",
+    "masking_status",
+    "serving_safe",
+    "records"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "dekg_evidence_v2"
+    },
+    "release_id": {
+      "$ref": "#/$defs/nonempty"
+    },
+    "source_id": {
+      "$ref": "#/$defs/nonempty"
+    },
+    "source_version": {
+      "$ref": "#/$defs/nonempty"
+    },
+    "manifest_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "lineage_ref": {
+      "$ref": "#/$defs/nonempty"
+    },
+    "masking_status": {
+      "enum": [
+        "masked",
+        "not_required",
+        "reviewed_masked"
+      ]
+    },
+    "serving_safe": {
+      "const": true
+    },
+    "producer_commit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/evidence_record"
+      }
+    }
+  },
+  "$defs": {
+    "nonempty": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nullable_nonempty": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/nonempty"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "string_list": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/nonempty"
+      }
+    },
+    "partition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "decision_id",
+        "tpdx_extraction_refs",
+        "tpdx_extraction_content_kinds",
+        "tpdx_consumption_state",
+        "excluded_anchor_refs",
+        "overlap_with_tpdx_fact"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "none",
+            "partitioned_table_extraction"
+          ]
+        },
+        "decision_id": {
+          "$ref": "#/$defs/nullable_nonempty"
+        },
+        "tpdx_extraction_refs": {
+          "$ref": "#/$defs/string_list"
+        },
+        "tpdx_extraction_content_kinds": {
+          "type": "array",
+          "items": {
+            "const": "table"
+          }
+        },
+        "tpdx_consumption_state": {
+          "oneOf": [
+            {
+              "enum": [
+                "candidate_selected",
+                "reviewed",
+                "published"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "excluded_anchor_refs": {
+          "$ref": "#/$defs/string_list"
+        },
+        "overlap_with_tpdx_fact": {
+          "const": false
+        }
+      }
+    },
+    "co_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "group_id",
+        "tpdx_extraction_refs",
+        "independent_corroboration"
+      ],
+      "properties": {
+        "group_id": {
+          "$ref": "#/$defs/nullable_nonempty"
+        },
+        "tpdx_extraction_refs": {
+          "$ref": "#/$defs/string_list"
+        },
+        "independent_corroboration": {
+          "const": false
+        }
+      }
+    },
+    "evidence_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "ingestion_mode",
+        "source_id",
+        "source_version",
+        "doc_id",
+        "block_id",
+        "chunk_id",
+        "anchor",
+        "content_kind",
+        "text",
+        "language",
+        "section_title",
+        "page_or_slide",
+        "evidence_status",
+        "route_b_status",
+        "serving_safe",
+        "tpdx_partition",
+        "co_source"
+      ],
+      "properties": {
+        "evidence_id": {
+          "type": "string",
+          "pattern": "^DEK_[0-9a-f]{64}$"
+        },
+        "ingestion_mode": {
+          "enum": [
+            "full_document",
+            "evidence_residual"
+          ]
+        },
+        "source_id": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "source_version": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "doc_id": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "block_id": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "chunk_id": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "anchor": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "content_kind": {
+          "enum": [
+            "text",
+            "table",
+            "vlm_text"
+          ]
+        },
+        "text": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "language": {
+          "$ref": "#/$defs/nullable_nonempty"
+        },
+        "section_title": {
+          "$ref": "#/$defs/nullable_nonempty"
+        },
+        "page_or_slide": {
+          "type": [
+            "string",
+            "integer",
+            "null"
+          ]
+        },
+        "evidence_status": {
+          "const": "evidence_only"
+        },
+        "route_b_status": {
+          "const": "evidence_only"
+        },
+        "serving_safe": {
+          "const": true
+        },
+        "tpdx_partition": {
+          "$ref": "#/$defs/partition"
+        },
+        "co_source": {
+          "$ref": "#/$defs/co_source"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "ingestion_mode": {
+                "const": "full_document"
+              }
+            },
+            "required": [
+              "ingestion_mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "tpdx_partition": {
+                "properties": {
+                  "mode": {
+                    "const": "none"
+                  },
+                  "decision_id": {
+                    "type": "null"
+                  },
+                  "tpdx_extraction_refs": {
+                    "maxItems": 0
+                  },
+                  "tpdx_extraction_content_kinds": {
+                    "maxItems": 0
+                  },
+                  "tpdx_consumption_state": {
+                    "type": "null"
+                  },
+                  "excluded_anchor_refs": {
+                    "maxItems": 0
+                  }
+                }
+              },
+              "co_source": {
+                "properties": {
+                  "group_id": {
+                    "type": "null"
+                  },
+                  "tpdx_extraction_refs": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "ingestion_mode": {
+                "const": "evidence_residual"
+              }
+            },
+            "required": [
+              "ingestion_mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "tpdx_partition": {
+                "properties": {
+                  "mode": {
+                    "const": "partitioned_table_extraction"
+                  },
+                  "decision_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "tpdx_extraction_refs": {
+                    "minItems": 1
+                  },
+                  "tpdx_extraction_content_kinds": {
+                    "minItems": 1
+                  },
+                  "tpdx_consumption_state": {
+                    "enum": [
+                      "candidate_selected",
+                      "reviewed",
+                      "published"
+                    ]
+                  },
+                  "excluded_anchor_refs": {
+                    "minItems": 1
+                  }
+                }
+              },
+              "co_source": {
+                "properties": {
+                  "group_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "tpdx_extraction_refs": {
+                    "minItems": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

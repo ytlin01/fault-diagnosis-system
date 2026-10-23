@@ -1,0 +1,41 @@
+# E2 — Local GPU development (Windows, RTX 2000 Ada 16G or RTX 4060 8G)
+# Inherits from base.yaml; overrides for Ollama + retrieval/GraphRAG testing.
+environment: local_gpu
+
+runtime:
+  execution_target: local_gpu
+  use_acceleration: true
+  log_level: INFO
+
+# Ollama local inference; host/model resolved from FAULTDX_OLLAMA_* env vars.
+#
+# IMPORTANT — Ollama must be started with the correct model path BEFORE use:
+#   E2a (custom path): set OLLAMA_MODELS via FAULTDX_OLLAMA_MODELS_DIR in .env,
+#                      then run: scripts\bootstrap\start_ollama_e2a.ps1
+#   E2b (default path): leave FAULTDX_OLLAMA_MODELS_DIR empty; ollama serve directly.
+#
+# Model recommendations by machine (set FAULTDX_OLLAMA_MODEL in .env):
+#   E2a RTX 2000 Ada 16G: qwen3:8b (fast) or qwen3:14b (better quality)
+#   E2b RTX 4060 8G:      qwen3:8b max; qwen3:14b risks OOM
+#
+# Embedding model: nomic-embed-text (required for GraphRAG indexing)
+provider:
+  type: ollama
+  ollama:
+    num_gpu: -1             # use all available GPU layers
+    context_length: 4096
+    # Parallelism tuning — loaded from FAULTDX_OLLAMA_NUM_PARALLEL etc.
+    # Ref baseline (E2a, qwen3:8b): num_parallel=2, max_loaded_models=1, max_queue=128
+
+graph:
+  enabled: true               # enable for local retrieval / graph testing
+
+graphrag:
+  enabled: true               # enable for local GraphRAG debugging
+
+retrieval:
+  enabled: true
+  top_k: 5
+
+logging:
+  level: INFO

@@ -1,0 +1,9 @@
+# FaultDx Phase 1 — development dependencies
+# Install: uv pip install -r requirements/dev.txt
+# Extends base.txt; only needed on development machines, not in production runs.
+
+-r base.txt
+
+# Testing
+pytest>=8.0
+pytest-asyncio>=0.23

@@ -1,0 +1,18 @@
+# E1 — Daily development (Windows PC, no GPU)
+# Inherits from base.yaml; overrides for lightweight local work.
+environment: dev
+
+runtime:
+  debug: true
+  log_level: DEBUG
+
+# stub provider: no real inference needed for schema / config / API / masking dev
+provider:
+  type: stub
+
+features:
+  enable_eval_logging: true
+  enable_local_stub_providers: true
+
+logging:
+  level: DEBUG

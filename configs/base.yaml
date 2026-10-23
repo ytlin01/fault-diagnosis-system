@@ -1,0 +1,97 @@
+phase: phase1
+project_name: FaultDx
+environment: base
+
+# ── Architecture ───────────────────────────────────────────────────────────────
+architecture:
+  default_path:
+    use_structured_query: true
+    use_case_retrieval: true
+    use_controlled_generation: true
+    use_iteration_governance: true
+    graph_is_default_entry: false  # graph is NOT the default entry in Phase 1
+
+# ── Domain ─────────────────────────────────────────────────────────────────────
+domain:
+  core_entities:
+    - Phenomenon
+    - MappingRecord
+
+# ── Data policy ────────────────────────────────────────────────────────────────
+data_policy:
+  raw_data_in_git: false
+  raw_data_external_api_allowed: false
+  require_masking_before_external_call: true
+
+# ── Provider ───────────────────────────────────────────────────────────────────
+# Active type is resolved at runtime from FAULTDX_PROVIDER_TYPE env var.
+# This block defines base defaults; environment configs may override.
+provider:
+  type: stub                  # stub | ollama | company_api
+  timeout_seconds: 30
+  max_retries: 2
+  ollama:
+    model: llama3.1           # override via FAULTDX_OLLAMA_MODEL
+    num_gpu: -1               # -1 = use all available GPU layers
+    context_length: 4096
+  company_api:
+    model: ""                 # override via FAULTDX_COMPANY_MODEL_NAME
+
+# ── Graph ──────────────────────────────────────────────────────────────────────
+# Connection details loaded at runtime from FAULTDX_NEO4J_* env vars.
+graph:
+  backend: neo4j
+  enabled: false              # disabled until graph module is ready
+
+# ── Retrieval ──────────────────────────────────────────────────────────────────
+retrieval:
+  vector_backend: none        # none | faiss | chromadb
+  top_k: 5
+  enabled: false              # disabled until retrieval module is ready
+  route_b:
+    source_id: data/serving_unstructured_vlm
+    top_k: 3
+    max_chunk_chars: 800
+  route_c:
+    case_source_id: rag_fp_case_candidates_v1
+    case_ranking: lexical_bm25
+    case_top_k: 3
+    case_min_score: 0.1
+    case_vector:
+      enabled: false
+      strategy: ollama_vector
+      index_path: data/processed/indexes/route_c_qwen3_embedding_4b
+      model: qwen3-embedding:4b
+      endpoint: http://127.0.0.1:11434
+      min_score: 0.35
+    case_light_rag:
+      enabled: false           # explicit opt-in; lexical BM25 remains first stage
+      provider_type: stub      # stub | ollama | company_api
+      apply_summaries: true
+      timeout_seconds: 30
+      ollama:
+        model: llama3.1
+        endpoint: http://localhost:11434
+      company_api:
+        model: ""
+
+# ── GraphRAG ───────────────────────────────────────────────────────────────────
+# Root path loaded at runtime from FAULTDX_GRAPHRAG_ROOT env var.
+# Primary validation target: E3 Ubuntu test server.
+graphrag:
+  enabled: false              # enable explicitly in local_gpu.yaml / server.yaml
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+# Level resolved from FAULTDX_LOG_LEVEL env var at runtime; this is the fallback.
+logging:
+  level: INFO                 # DEBUG | INFO | WARNING | ERROR
+  output: console             # console | file
+
+# ── Paths ──────────────────────────────────────────────────────────────────────
+# Resolved from env vars at runtime; values here serve as documentation defaults.
+paths:
+  data_raw: ./data/raw
+  data_processed: ./data/processed
+  data_serving_structured: ./data/serving_structured
+  data_serving_unstructured: ./data/serving_unstructured
+  data_eval: ./data/eval

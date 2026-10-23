@@ -1,0 +1,108 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+coverage/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+
+# Logs / runtime
+*.log
+tmp/
+temp/
+
+# Data safety - raw data files are never committed; directory stubs (.gitkeep) are
+data/raw/**
+data/processed/**
+data/serving/**
+data/serving_structured/**
+data/serving_unstructured/**
+data/serving_unstructured_vlm/**
+data/eval/**
+# Controlled blind-query inputs are versioned; human-review keys and run output stay ignored.
+!data/eval/route_a/c1stn_blind_queries_v1.json
+data/data_governance.xlsx
+!data/raw/**/
+!data/raw/**/.gitkeep
+!data/processed/.gitkeep
+!data/serving/**/
+!data/serving/**/.gitkeep
+!data/serving_structured/.gitkeep
+!data/serving_unstructured/.gitkeep
+!data/serving_unstructured_vlm/.gitkeep
+!data/eval/.gitkeep
+!data/eval/route_a/
+!data/eval/route_a/route_a_plumbing_smoke_v0.json
+!data/eval/route_a/route_a_e2e_smoke_v0.json
+!data/eval/route_a/route_a_serving_safe_fixtures_v1.json
+!data/eval/route_b/
+!data/eval/route_b/route_b_anchor_smoke_v0.json
+!data/eval/route_b/route_b_benchmark_v0.json
+!data/eval/route_b/route_b_query_bank_v1.json
+!data/eval/route_b/route_b_serving_safe_fixtures_v1.json
+!data/eval/route_c/
+!data/eval/route_c/route_c_case_benchmark_v0.json
+!data/eval/route_c/route_c_query_bank_v1.json
+!data/eval/route_c/route_c_serving_safe_fixtures_v1.json
+
+# Local legacy data payloads remain reference-only and untracked. Curated
+# historical documentation under legacy/data/docs/ is versioned separately.
+legacy/data/diagnostic/**
+!legacy/data/diagnostic/.gitkeep
+legacy/data/vendor_inspection/**
+
+# Reports / generated artifacts
+docs/reports/generated/
+docs/external/
+artifacts/
+
+# Local tooling caches
+.cache/
+.tmp/
+
+# Local session logs (machine-specific, not for git)
+docs/local/
+
+# Local-only Codex agent harness and task package; never stage or upload to GitHub.
+# Existing tracked historical files are intentionally left untouched.
+.codex/agents/code_review_agent.toml
+docs/agents/code_review_agent.md
+docs/tasks/V2-TASK018_code_review_agent_workflow/
+
+# Local Claude settings
+.claude/settings.local.json
+
+.claude/
+
+# Onboarding raw/unmasked reference material - kept local, never committed.
+# (The onboarding .md docs in these folders ARE tracked; only raw decks and
+#  canonical/unmasked sample artifacts are excluded.)
+docs/onboarding/vision_sop_onboarding/reference samples/
+docs/onboarding/vision_sop_onboarding/*.pptx
+docs/onboarding/*.zip
+
+# Local reference work containing real device-layer data - never committed.
+# Registered in source_inventory.csv as local_reference sources; content stays local.
+reference_work/

@@ -1,0 +1,15 @@
+﻿# Data-branch workflow is owned by A.
+AGENTS.md @ytlin01
+HANDOFF_README.md @ytlin01
+.codex/agents/ @ytlin01
+docs/agents/ @ytlin01
+
+# Integration boundary is reviewed by N.
+HANDOFF_INTEGRATION.md @Nicole-gemini
+
+# Shared repository workflow enforcement is reviewed by N.
+docs/tasks/TASK_TEMPLATE.md @Nicole-gemini
+.github/CODEOWNERS @Nicole-gemini
+.github/pull_request_template.md @Nicole-gemini
+.github/workflows/workflow-guard.yml @Nicole-gemini
+scripts/check_workflow_guard.py @Nicole-gemini

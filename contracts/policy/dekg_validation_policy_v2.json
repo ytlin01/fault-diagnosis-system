@@ -1,0 +1,118 @@
+{
+  "$id": "dekg_validation_policy_v2",
+  "title": "FaultDx DEKG Validation Policy",
+  "version": "1.0",
+  "date": "2026-07-23",
+  "status": "FROZEN",
+  "owner": "data_contract_engineer",
+  "evidence_contract_ref": "dekg_evidence_v2",
+  "schema_ref": "../evidence/dekg_evidence_v2.schema.json",
+  "knowledge_asset": "DEKG",
+  "description": "Defines whether a DEKG full-document or evidence-residual package is accepted as evidence, held for review, or rejected. It does not approve TPDX publication, graph-node promotion, or runtime adoption.",
+  "validator_policy": {
+    "statuses": [
+      "accepted_evidence",
+      "candidate_review",
+      "rejection"
+    ],
+    "accepted_record_type": "DEKGEvidenceRecord",
+    "support_object_status": "candidate_review",
+    "required_package_fields_ref": "dekg_evidence_v2.ingestion_contract.package_required_fields",
+    "required_record_fields_ref": "dekg_evidence_v2.ingestion_contract.record_required_fields",
+    "required_record_values": {
+      "evidence_status": "evidence_only",
+      "route_b_status": "evidence_only",
+      "serving_safe": true,
+      "tpdx_partition.overlap_with_tpdx_fact": false,
+      "co_source.independent_corroboration": false
+    },
+    "accepted_content_kinds_ref": "dekg_evidence_v2.ingestion_contract.allowed_content_kinds",
+    "mode_policy": {
+      "full_document": {
+        "tpdx_partition.mode": "none",
+        "decision_id": null,
+        "tpdx_extraction_refs": [],
+        "tpdx_extraction_content_kinds": [],
+        "tpdx_consumption_state": null,
+        "excluded_anchor_refs": [],
+        "co_source.tpdx_extraction_refs": []
+      },
+      "evidence_residual": {
+        "tpdx_partition.mode": "partitioned_table_extraction",
+        "tpdx_extraction_content_kinds": [
+          "table"
+        ],
+        "decision_id_required": true,
+        "tpdx_extraction_refs_required": true,
+        "tpdx_consumption_state_required": true,
+        "excluded_anchor_refs_required": true,
+        "co_source.group_id_required": true,
+        "co_source_refs_must_match_partition": true
+      }
+    },
+    "blocked_field_names": [
+      "raw_text",
+      "raw_image",
+      "response_text",
+      "raw_response",
+      "endpoint",
+      "secret",
+      "credential",
+      "masking_salt",
+      "local_asset_path",
+      "absolute_path",
+      "debug_payload"
+    ],
+    "blocked_value_markers": [
+      "data/raw",
+      "data\\raw",
+      "data/processed/unstructured",
+      "data\\processed\\unstructured",
+      ".env",
+      "http://localhost",
+      "https://localhost"
+    ],
+    "rejection_conditions": [
+      "missing required package or record provenance",
+      "serving_safe is not true",
+      "route_b_status is not evidence_only",
+      "content kind is raw image or unapproved provider output",
+      "blocked field name or value marker is present",
+      "duplicate composite identity has non-equivalent content",
+      "ingestion_mode is neither full_document nor evidence_residual",
+      "full_document declares TPDX extraction or excluded anchors",
+      "evidence_residual lacks a table-only partition decision, TPDX extraction refs, consumption state, or excluded table anchors",
+      "evidence_residual emits an anchor listed as excluded for TPDX",
+      "DEKG evidence overlaps a TPDX fact",
+      "co-source TPDX extraction is presented as independent corroboration",
+      "record claims reviewed or confirmed diagnosis"
+    ],
+    "candidate_review_conditions": [
+      "support-object property shape is not yet frozen",
+      "source alias collides with another governed source",
+      "anchor is syntactically present but cannot be independently resolved",
+      "content requires domain review for safe exposure"
+    ],
+    "diagnosis_promotion": "forbidden",
+    "tpdx_node_promotion": "forbidden",
+    "graph_node_promotion": "forbidden_without_separate_derivation_contract",
+    "graph_retrieval_adoption": "requires_separate_evaluation"
+  },
+  "compatibility": {
+    "legacy_policy": "route_b_validation_policy_v2",
+    "breaking_changes": [
+      "published_graph becomes accepted_evidence to avoid implying TPDX publication.",
+      "DocumentAsset is replaced by non-node DEKGEvidenceRecord.",
+      "Full-document ingestion is the default; residual mode is conditional on table extraction for TPDX.",
+      "Runtime constants cannot load this proposal without an explicit adapter and consumer review."
+    ],
+    "migration": [
+      "Do not bind this proposal to runtime before freeze approval. Inventory any deployed legacy consumer separately because the tracked Route B v2 pair is deleted in the current worktree.",
+      "Add producer validation for release, lineage, source version, and co-source fields.",
+      "Add a migration adapter that emits DEKGEvidenceRecord with stable evidence_id and explicit ingestion mode from approved legacy payloads.",
+      "Run old/new contract validation on identical synthetic and approved serving-safe packages.",
+      "Bind runtime only after affected-consumer approval."
+    ],
+    "rollback": "Do not bind this proposal before freeze approval. If consumer review fails, reject the new package and return the proposal for revision; this task does not restore deleted legacy contracts."
+  }
+}

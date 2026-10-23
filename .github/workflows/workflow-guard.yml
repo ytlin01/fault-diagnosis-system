@@ -1,0 +1,33 @@
+﻿name: Workflow Guard
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  workflow-guard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Capture pull request body
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s\n' "$PR_BODY" > pr_body.txt
+
+      - name: Capture changed files
+        run: |
+          git diff --name-status \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}" > changed_files.txt
+
+      - name: Validate workflow guard requirements
+        run: |
+          python scripts/check_workflow_guard.py \
+            --changed-files-file changed_files.txt \
+            --pr-body-file pr_body.txt

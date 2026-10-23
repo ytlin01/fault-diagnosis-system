@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faultdx/contracts/evaluation/route_a_golden_case_v1.schema.json",
+  "title": "Route A graph-independent golden-case set",
+  "description": "DRAFT V2-TASK001 domain-gold contract. It contains independently anchored labels, never graph-specific retrieval output.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "set_id", "contract_state", "cases"],
+  "properties": {
+    "schema_version": {"const": "route_a_golden_case_v1"},
+    "set_id": {"type": "string", "minLength": 1},
+    "contract_state": {"enum": ["DRAFT", "REVIEWED_PROPOSAL", "FROZEN"]},
+    "cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/case"}}
+  },
+  "$defs": {
+    "source_anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "anchor", "source_review_state", "allowed_use"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "anchor": {"type": "string", "minLength": 1},
+        "source_review_state": {"enum": ["pending", "reviewed", "adjudicated"]},
+        "allowed_use": {"enum": ["annotation_only", "evaluation_only", "annotation_and_evaluation"]}
+      }
+    },
+    "cause_label": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cause_id", "source_anchors"],
+      "properties": {
+        "cause_id": {"type": "string", "minLength": 1},
+        "source_anchors": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/source_anchor"}}
+      }
+    },
+    "cause_action_label": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cause_id", "action_id", "source_anchors"],
+      "properties": {
+        "cause_id": {"type": "string", "minLength": 1},
+        "action_id": {"type": "string", "minLength": 1},
+        "source_anchors": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/source_anchor"}}
+      }
+    },
+    "review_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer_id", "role", "decision", "reviewed_at", "rationale_anchor"],
+      "properties": {
+        "reviewer_id": {"type": "string", "minLength": 1},
+        "role": {"enum": ["annotator", "domain_reviewer", "adjudicator"]},
+        "decision": {"enum": ["accept", "reject", "replace", "abstain"]},
+        "reviewed_at": {"type": "string", "format": "date-time"},
+        "rationale_anchor": {"type": "string", "minLength": 1}
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["abstention", "acceptable_causes", "acceptable_cause_action_pairs"],
+      "properties": {
+        "abstention": {"enum": ["required", "allowed", "not_expected"]},
+        "acceptable_causes": {"type": "array", "items": {"$ref": "#/$defs/cause_label"}},
+        "acceptable_cause_action_pairs": {"type": "array", "items": {"$ref": "#/$defs/cause_action_label"}}
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "scenario_id", "partition", "query", "query_language", "coverage", "label_maturity", "label_independence", "expected", "review_records"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1},
+        "scenario_id": {"type": "string", "minLength": 1},
+        "partition": {"enum": ["development", "validation", "blind"]},
+        "query": {"type": "string", "minLength": 1},
+        "query_language": {"type": "string", "minLength": 2},
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["query_type", "difficulty", "equipment_scope"],
+          "properties": {
+            "query_type": {"enum": ["ec", "phenomenon", "asset", "ambiguous", "partial_chain", "multiple_valid_answer", "no_hit_abstention"]},
+            "difficulty": {"enum": ["low", "medium", "high"]},
+            "equipment_scope": {"type": "string", "minLength": 1}
+          }
+        },
+        "label_maturity": {"enum": ["unannotated", "assumed_label_provisional", "provisional", "reviewed", "adjudicated"]},
+        "label_independence": {"enum": ["independent_evidence", "candidate_worksheet_only", "graph_derived_prohibited"]},
+        "expected": {"$ref": "#/$defs/expected"},
+        "review_records": {"type": "array", "items": {"$ref": "#/$defs/review_record"}},
+        "adjudication_status": {"enum": ["not_required", "pending", "resolved"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"partition": {"const": "blind"}}, "required": ["partition"]},
+          "then": {"properties": {"label_maturity": {"enum": ["reviewed", "adjudicated"]}}}
+        },
+        {
+          "if": {"properties": {"label_maturity": {"enum": ["reviewed", "adjudicated"]}}, "required": ["label_maturity"]},
+          "then": {"properties": {"label_independence": {"const": "independent_evidence"}, "review_records": {"minItems": 1}}}
+        },
+        {
+          "if": {"properties": {"expected": {"properties": {"abstention": {"const": "not_expected"}}, "required": ["abstention"]}}, "required": ["expected"]},
+          "then": {"properties": {"expected": {"properties": {"acceptable_causes": {"minItems": 1}}}}}
+        }
+      ]
+    }
+  }
+}

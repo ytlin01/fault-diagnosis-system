@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FaultDx 现场诊断助手</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="history-pane" aria-label="历史对话">
+      <div class="brand-block">
+        <div class="brand-mark">FD</div>
+        <div>
+          <h1>FaultDx</h1>
+          <p>现场诊断助手</p>
+        </div>
+      </div>
+      <button id="newConversation" class="new-conv-btn" type="button">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        新建对话
+      </button>
+      <div id="conversationList" class="conversation-list"></div>
+    </aside>
+
+    <main class="workbench">
+      <section class="answer-panel" aria-label="诊断对话">
+        <div id="threadView" class="thread-view"></div>
+      </section>
+
+      <section class="composer-band" aria-label="问题输入">
+        <div class="composer-shell">
+          <div class="composer-copy">
+            <span class="composer-label">继续提问或追问</span>
+            <p>输入报警代码、故障现象、处理步骤，或直接追问下一步怎么查。</p>
+          </div>
+          <div class="field-query">
+            <textarea id="questionInput" rows="3" placeholder="例如：M03CVMA-02-03 报警是什么意思？或继续追问：如果已经检查过网线，下一步该怎么排查？"></textarea>
+            <button id="sendQuestion" class="primary-btn" type="button">发送</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="renameDialog">
+    <form method="dialog" class="dialog-form">
+      <label class="field-label">
+        对话名称
+        <input id="renameInput" maxlength="80">
+      </label>
+      <div class="dialog-actions">
+        <button value="cancel" type="submit" class="ghost-btn">取消</button>
+        <button id="confirmRename" value="rename" type="submit" class="primary-btn">重命名</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <script src="/workbench.js"></script>
+</body>
+</html>

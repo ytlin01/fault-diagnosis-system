@@ -1,0 +1,62 @@
+# Governed configuration for the V2-TASK017 replacement-list parser.
+#
+# Renamed from material_extract_v2.yaml to replacement_extract.yaml and
+# reduced to the single governed input (data-owner decision, 2026-08-27):
+# the BOM04 consumable/replacement-list sheet, L_ReplacementList. The BOM03
+# spare-BOM path, topology endpoint resolution, and REPLACEMENT_FOR edges
+# were removed with it; parser output is ReplacementPart nodes only.
+#
+# `header_row` and `data_offset` are 0-based sheet-row indices; lineage
+# anchors remain Excel 1-based row numbers. Sheet and header are
+# auto-detected at read time within `detection.search_rows` and fall back
+# to these defaults.
+schema_version: "material-extract-v2.0-draft"
+
+identity:
+  salt_env: "FAULTDX_MASKING_SALT"
+  identity_rule_version: "material_identity_v1"
+  id_prefix: "RP_"
+  spec_in_id: true
+  spec_missing_token: ""
+
+canonicalization:
+  unicode_normalization: "NFKC"
+  collapse_whitespace: true
+  identity_casefold: false
+  match_casefold: true
+
+bom04:
+  # Bound to the canonical governance source record for L_ReplacementList
+  # (data/governance/source_inventory.csv) so lineage anchors and run
+  # manifests point directly at the registered source (decision 2026-08-27).
+  source_id: "raw__C1STN_bom_material__L_ReplacementList"
+  sheet: "工作表1"
+  header_row: 1
+  # Row after the header is a field-description row -> skipped.
+  data_offset: 2
+  name_col: "耗材品名"
+  spec_col: "耗材規格"
+  station_cols: ["自動化工站", "station"]
+  header_aliases:
+    耗材品名: ["耗材名称", "耗材名稱", "品名"]
+    耗材規格: ["耗材规格", "規格", "规格"]
+    自動化工站: ["自动化工站"]
+  # Textual columns that must never appear in any output artifact.
+  # 單價/耗材QPL added from the approved L_ReplacementList column
+  # classification (source_inventory note, 2026-08-27).
+  sensitive_columns: ["廠商", "廠商代碼", "品牌", "設備名稱", "設備型號", "聯繫人", "備註", "專案", "製程", "物料", "廠商 PN", "單價", "耗材QPL"]
+
+detection:
+  search_rows: 15
+
+leakage:
+  min_value_length: 3
+  skip_purely_numeric: true
+  numeric_pattern: "^[0-9]+([.][0-9]+)?$"
+
+audit:
+  spec_missing_rate_warn: 0.5
+
+candidate:
+  schema_version: "4.2"
+  payload_kind: "diagnostic"

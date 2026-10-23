@@ -1,0 +1,465 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tpdx_kg_schema_v4_1",
+  "title": "FaultDx TPDX KG Schema 4.1 Ingestion Contract",
+  "description": "Route A ingestion contract for the governed three-layer topology, module-scoped diagnostic assertions, and replacement-part knowledge graph.",
+  "x-contract-status": "FROZEN",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "payload_kind", "nodes", "edges", "exclusions"],
+  "properties": {
+    "schema_version": {"const": "4.1"},
+    "payload_kind": {"type": "string", "enum": ["topology", "diagnostic", "combined"]},
+    "nodes": {"type": "array", "items": {"$ref": "#/$defs/node"}},
+    "edges": {"type": "array", "items": {"$ref": "#/$defs/edge"}},
+    "exclusions": {"type": "array", "items": {"$ref": "#/$defs/exclusion"}}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"payload_kind": {"const": "topology"}},
+        "required": ["payload_kind"]
+      },
+      "then": {
+        "properties": {
+          "nodes": {"items": {"$ref": "#/$defs/topology_node"}},
+          "edges": {"items": {"$ref": "#/$defs/topology_edge"}}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"payload_kind": {"const": "diagnostic"}},
+        "required": ["payload_kind"]
+      },
+      "then": {
+        "properties": {
+          "nodes": {"items": {"$ref": "#/$defs/diagnostic_node"}},
+          "edges": {"items": {"$ref": "#/$defs/diagnostic_edge"}}
+        }
+      }
+    }
+  ],
+  "x-graph-invariants": [
+    "A topology payload contains only topology nodes and topology edges; a diagnostic payload contains diagnostic nodes and may reference existing topology IDs through SCOPED_TO; a combined payload may contain both.",
+    "Station, Module, Component, and SubComponent are published with TopologyElement as a secondary label; TopologyElement is not an independent node type.",
+    "Each node.id equals properties.station_id, module_id, component_id, or subcomponent_id according to label.",
+    "Node IDs are globally unique across all topology labels.",
+    "Every non-Station node has exactly one incoming hierarchy edge of the permitted type.",
+    "Parent fields equal the hierarchy edge source label and ID.",
+    "Every Component and SubComponent module_id resolves to the same ancestor Module.",
+    "Hierarchy edges contain no self-parenting or cycles.",
+    "Every edge endpoint resolves to a node in this bundle or an explicitly governed pre-existing topology node.",
+    "Topology nodes form the Station -> Module -> Component -> SubComponent hierarchy.",
+    "Diagnostic nodes form reviewed MappingRecord assertions over ErrorCode, Phenomenon, Cause, Action, and ActionStep.",
+    "MappingRecord is a first-class governed assertion node that replaces the legacy TRIGGERS relationship; it is not a physical topology entity or a diagnostic concept.",
+    "Each MappingRecord has exactly one outgoing SCOPED_TO edge to one Module, exactly one outgoing OBSERVES edge to one Phenomenon, and at most one outgoing USES_ERROR_CODE edge.",
+    "TRIGGERS, HAS_FAULT, and direct topology-to-Phenomenon shortcut edges are derived views and are not stored Schema 4.1 relationships.",
+    "A topology-first query resolves a canonical Module, Component, or SubComponent entry ID; Module resolves directly, while Component and SubComponent resolve through their governed hierarchy to the ancestor Module before retrieving MappingRecord assertions.",
+    "Ancestor-module resolution preserves the original query entry ID and does not claim that a module-scoped MappingRecord is directly scoped to a Component or SubComponent.",
+    "Replacement nodes form reviewed ReplacementPart compatibility and action-requirement relationships.",
+    "Diagnostic and replacement edges are Route A assertions and must reference only governed Schema 4.1 node types.",
+    "Duplicate names and aliases remain unresolved candidate sets until a canonical ID is selected.",
+    "Any record that cannot satisfy these invariants appears in exclusions and is not silently dropped."
+  ],
+  "x-query-entry-contract": {
+    "router_entry_labels": ["Module", "Component", "SubComponent"],
+    "assertion_scope_label": "Module",
+    "resolution_modes": {
+      "Module": "direct",
+      "Component": "ancestor_module",
+      "SubComponent": "ancestor_module"
+    },
+    "required_result_identity": ["query_entry_label", "query_entry_id", "assertion_scope_label", "assertion_scope_id", "scope_resolution"],
+    "stored_diagnostic_path": "MappingRecord-[:SCOPED_TO]->Module; MappingRecord-[:OBSERVES]->Phenomenon"
+  },
+  "x-identity-rules": {
+    "mapping_record_identity_v1": {
+      "inputs": ["source_id", "source_snapshot_id", "source_record_id", "SCOPED_TO.module_id", "OBSERVES.phenomenon_id"],
+      "delimiter": "U+001F",
+      "digest": "SHA-256 lowercase hexadecimal",
+      "output": "MR_<64 lowercase hexadecimal characters>",
+      "excluded_mutable_fields": ["review_status", "serving_safe", "promotion_decision_id", "reviewed_by", "reviewed_at", "warnings"]
+    }
+  },
+  "$defs": {
+    "topology_type": {"type": "string", "enum": ["mechanical", "electrical", "unknown"]},
+    "aliases": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "station_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["label", "id", "properties"],
+      "properties": {
+        "label": {"const": "Station"},
+        "id": {"type": "string", "pattern": "^ST_[a-f0-9]{64}$"},
+        "properties": {
+          "type": "object", "additionalProperties": false,
+          "required": ["station_id", "name", "station_type", "identity_namespace", "source_native_id", "identity_rule_version"],
+          "properties": {
+            "station_id": {"type": "string", "pattern": "^ST_[a-f0-9]{64}$"},
+            "name": {"type": "string", "minLength": 1},
+            "station_type": {"type": "string", "minLength": 1},
+            "aliases": {"$ref": "#/$defs/aliases"},
+            "identity_namespace": {"type": "string", "minLength": 1},
+            "source_native_id": {"type": "string", "minLength": 1},
+            "identity_rule_version": {"const": "topology_identity_v1"},
+            "source_snapshot_id": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "module_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["label", "id", "properties"],
+      "properties": {
+        "label": {"const": "Module"},
+        "id": {"type": "string", "pattern": "^M_[a-f0-9]{64}$"},
+        "properties": {
+          "type": "object", "additionalProperties": false,
+          "required": ["module_id", "name", "module_type", "station_id", "identity_namespace", "source_native_id", "identity_rule_version"],
+          "properties": {
+            "module_id": {"type": "string", "pattern": "^M_[a-f0-9]{64}$"},
+            "name": {"type": "string", "minLength": 1},
+            "module_type": {"$ref": "#/$defs/topology_type"},
+            "station_id": {"type": "string", "pattern": "^ST_[a-f0-9]{64}$"},
+            "aliases": {"$ref": "#/$defs/aliases"},
+            "identity_namespace": {"type": "string", "minLength": 1},
+            "source_native_id": {"type": "string", "minLength": 1},
+            "identity_rule_version": {"const": "topology_identity_v1"},
+            "source_snapshot_id": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "component_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["label", "id", "properties"],
+      "properties": {
+        "label": {"const": "Component"},
+        "id": {"type": "string", "pattern": "^C_[a-f0-9]{64}$"},
+        "properties": {
+          "type": "object", "additionalProperties": false,
+          "required": ["component_id", "name", "component_type", "module_id", "identity_namespace", "source_native_id", "identity_rule_version"],
+          "properties": {
+            "component_id": {"type": "string", "pattern": "^C_[a-f0-9]{64}$"},
+            "name": {"type": "string", "minLength": 1},
+            "component_type": {"$ref": "#/$defs/topology_type"},
+            "module_id": {"type": "string", "pattern": "^M_[a-f0-9]{64}$"},
+            "aliases": {"$ref": "#/$defs/aliases"},
+            "identity_namespace": {"type": "string", "minLength": 1},
+            "source_native_id": {"type": "string", "minLength": 1},
+            "identity_rule_version": {"const": "topology_identity_v1"},
+            "source_snapshot_id": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "subcomponent_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["label", "id", "properties"],
+      "properties": {
+        "label": {"const": "SubComponent"},
+        "id": {"type": "string", "pattern": "^SC_[a-f0-9]{64}$"},
+        "properties": {
+          "type": "object", "additionalProperties": false,
+          "required": ["subcomponent_id", "name", "component_type", "parent_label", "parent_id", "module_id", "identity_namespace", "source_native_id", "identity_rule_version"],
+          "properties": {
+            "subcomponent_id": {"type": "string", "pattern": "^SC_[a-f0-9]{64}$"},
+            "name": {"type": "string", "minLength": 1},
+            "component_type": {"$ref": "#/$defs/topology_type"},
+            "parent_label": {"type": "string", "enum": ["Component", "SubComponent"]},
+            "parent_id": {"type": "string", "pattern": "^(C|SC)_[a-f0-9]{64}$"},
+            "module_id": {"type": "string", "pattern": "^M_[a-f0-9]{64}$"},
+            "aliases": {"$ref": "#/$defs/aliases"},
+            "identity_namespace": {"type": "string", "minLength": 1},
+            "source_native_id": {"type": "string", "minLength": 1},
+            "identity_rule_version": {"const": "topology_identity_v1"},
+            "source_snapshot_id": {"type": "string", "minLength": 1}
+          },
+          "allOf": [
+            {"if": {"properties": {"parent_label": {"const": "Component"}}}, "then": {"properties": {"parent_id": {"pattern": "^C_[a-f0-9]{64}$"}}}},
+            {"if": {"properties": {"parent_label": {"const": "SubComponent"}}}, "then": {"properties": {"parent_id": {"pattern": "^SC_[a-f0-9]{64}$"}}}}
+          ]
+        }
+      }
+    },
+    "error_code_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["label", "id", "properties"],
+      "properties": {
+        "label": {"const": "ErrorCode"},
+        "id": {"type": "string", "pattern": "^EC_[a-f0-9]{64}$"},
+        "properties": {
+          "type": "object", "additionalProperties": false,
+          "required": ["error_code_id", "namespace", "code", "identity_rule_version"],
+          "properties": {
+            "error_code_id": {"type": "string", "pattern": "^EC_[a-f0-9]{64}$"},
+            "namespace": {"type": "string", "minLength": 1},
+            "code": {"type": "string", "minLength": 1},
+            "device_family": {"type": ["string", "null"]},
+            "description": {"type": ["string", "null"]},
+            "aliases": {"$ref": "#/$defs/aliases"},
+            "identity_rule_version": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "phenomenon_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["label", "id", "properties"],
+      "properties": {
+        "label": {"const": "Phenomenon"},
+        "id": {"type": "string", "pattern": "^PH_[a-f0-9]{64}$"},
+        "properties": {
+          "type": "object", "additionalProperties": false,
+          "required": ["phenomenon_id", "canonical_text", "identity_rule_version"],
+          "properties": {
+            "phenomenon_id": {"type": "string", "pattern": "^PH_[a-f0-9]{64}$"},
+            "canonical_text": {"type": "string", "minLength": 1},
+            "aliases": {"$ref": "#/$defs/aliases"},
+            "language": {"type": ["string", "null"]},
+            "severity": {"type": ["string", "null"], "enum": ["low", "medium", "high", "critical", null]},
+            "identity_rule_version": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "cause_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["label", "id", "properties"],
+      "properties": {
+        "label": {"const": "Cause"},
+        "id": {"type": "string", "pattern": "^CA_[a-f0-9]{64}$"},
+        "properties": {
+          "type": "object", "additionalProperties": false,
+          "required": ["cause_id", "canonical_text", "identity_rule_version"],
+          "properties": {
+            "cause_id": {"type": "string", "pattern": "^CA_[a-f0-9]{64}$"},
+            "canonical_text": {"type": "string", "minLength": 1},
+            "aliases": {"$ref": "#/$defs/aliases"},
+            "identity_rule_version": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "mapping_record_node": {
+      "type": "object", "additionalProperties": false,
+      "description": "First-class governed assertion node that replaces the legacy TRIGGERS edge and bridges one canonical Module scope to one Phenomenon.",
+      "required": ["label", "id", "properties"],
+      "properties": {
+        "label": {"const": "MappingRecord"},
+        "id": {"type": "string", "pattern": "^MR_[a-f0-9]{64}$"},
+        "properties": {
+          "type": "object", "additionalProperties": false,
+          "required": ["mapping_record_id", "source_id", "source_snapshot_id", "source_record_id", "review_status", "serving_safe", "promotion_decision_id", "identity_rule_version"],
+          "properties": {
+            "mapping_record_id": {"type": "string", "pattern": "^MR_[a-f0-9]{64}$"},
+            "source_id": {"type": "string", "minLength": 1},
+            "source_snapshot_id": {"type": "string", "minLength": 1},
+            "source_record_id": {"type": "string", "minLength": 1},
+            "source_anchor": {"type": ["string", "null"]},
+            "segment_index": {"type": "integer", "minimum": 0},
+            "review_status": {"const": "reviewed"},
+            "serving_safe": {"const": true},
+            "promotion_decision_id": {"type": "string", "minLength": 1},
+            "reviewed_by": {"type": ["string", "null"]},
+            "reviewed_at": {"type": ["string", "null"], "format": "date-time"},
+            "identity_rule_version": {"const": "mapping_record_identity_v1"},
+            "warnings": {"type": "array", "items": {"type": "string"}}
+          }
+        }
+      }
+    },
+    "action_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["label", "id", "properties"],
+      "properties": {
+        "label": {"const": "Action"},
+        "id": {"type": "string", "pattern": "^AC_[a-f0-9]{64}$"},
+        "properties": {
+          "type": "object", "additionalProperties": false,
+          "required": ["action_id", "action_name", "identity_rule_version"],
+          "properties": {
+            "action_id": {"type": "string", "pattern": "^AC_[a-f0-9]{64}$"},
+            "action_name": {"type": "string", "minLength": 1},
+            "action_type": {"type": ["string", "null"]},
+            "requires_shutdown": {"type": ["boolean", "null"]},
+            "prerequisites": {"type": "array", "items": {"type": "string"}},
+            "required_tools": {"type": "array", "items": {"type": "string"}},
+            "safety_warnings": {"type": "array", "items": {"type": "string"}},
+            "identity_rule_version": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "action_step_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["label", "id", "properties"],
+      "properties": {
+        "label": {"const": "ActionStep"},
+        "id": {"type": "string", "pattern": "^AS_[a-f0-9]{64}$"},
+        "properties": {
+          "type": "object", "additionalProperties": false,
+          "required": ["step_id", "order", "instruction"],
+          "properties": {
+            "step_id": {"type": "string", "pattern": "^AS_[a-f0-9]{64}$"},
+            "order": {"type": "integer", "minimum": 1},
+            "instruction": {"type": "string", "minLength": 1},
+            "expected_result": {"type": ["string", "null"]},
+            "safety_warning": {"type": ["string", "null"]}
+          }
+        }
+      }
+    },
+    "replacement_part_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["label", "id", "properties"],
+      "properties": {
+        "label": {"const": "ReplacementPart"},
+        "id": {"type": "string", "pattern": "^RP_[a-f0-9]{64}$"},
+        "properties": {
+          "type": "object", "additionalProperties": false,
+          "required": ["replacement_part_id", "canonical_name", "identity_rule_version"],
+          "properties": {
+            "replacement_part_id": {"type": "string", "pattern": "^RP_[a-f0-9]{64}$"},
+            "canonical_name": {"type": "string", "minLength": 1},
+            "specification": {"type": ["string", "null"]},
+            "aliases": {"$ref": "#/$defs/aliases"},
+            "replacement_policy": {"type": ["string", "null"]},
+            "identity_rule_version": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "topology_node": {"oneOf": [{"$ref": "#/$defs/station_node"}, {"$ref": "#/$defs/module_node"}, {"$ref": "#/$defs/component_node"}, {"$ref": "#/$defs/subcomponent_node"}]},
+    "topology_edge": {"oneOf": [{"$ref": "#/$defs/has_module_edge"}, {"$ref": "#/$defs/has_component_edge"}, {"$ref": "#/$defs/has_subcomponent_edge"}, {"$ref": "#/$defs/has_connection_edge"}]},
+    "diagnostic_node": {"oneOf": [{"$ref": "#/$defs/error_code_node"}, {"$ref": "#/$defs/phenomenon_node"}, {"$ref": "#/$defs/mapping_record_node"}, {"$ref": "#/$defs/cause_node"}, {"$ref": "#/$defs/action_node"}, {"$ref": "#/$defs/action_step_node"}, {"$ref": "#/$defs/replacement_part_node"}]},
+    "node": {"oneOf": [{"$ref": "#/$defs/station_node"}, {"$ref": "#/$defs/module_node"}, {"$ref": "#/$defs/component_node"}, {"$ref": "#/$defs/subcomponent_node"}, {"$ref": "#/$defs/error_code_node"}, {"$ref": "#/$defs/phenomenon_node"}, {"$ref": "#/$defs/mapping_record_node"}, {"$ref": "#/$defs/cause_node"}, {"$ref": "#/$defs/action_node"}, {"$ref": "#/$defs/action_step_node"}, {"$ref": "#/$defs/replacement_part_node"}]},
+    "hierarchy_edge_properties": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "source": {"type": "string", "minLength": 1},
+        "extracted_from": {"type": "string", "minLength": 1},
+        "quantity": {"type": "integer", "minimum": 1}
+      }
+    },
+    "diagnostic_edge_properties": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "source": {"type": "string", "minLength": 1},
+        "extracted_from": {"type": "string", "minLength": 1},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "has_module_edge": {
+      "type": "object", "additionalProperties": false, "required": ["type", "from", "to", "properties"],
+      "properties": {"type": {"const": "HAS_MODULE"}, "from": {"type": "string", "pattern": "^ST_[a-f0-9]{64}$"}, "to": {"type": "string", "pattern": "^M_[a-f0-9]{64}$"}, "properties": {"$ref": "#/$defs/hierarchy_edge_properties"}}
+    },
+    "has_component_edge": {
+      "type": "object", "additionalProperties": false, "required": ["type", "from", "to", "properties"],
+      "properties": {"type": {"const": "HAS_COMPONENT"}, "from": {"type": "string", "pattern": "^M_[a-f0-9]{64}$"}, "to": {"type": "string", "pattern": "^C_[a-f0-9]{64}$"}, "properties": {"$ref": "#/$defs/hierarchy_edge_properties"}}
+    },
+    "has_subcomponent_edge": {
+      "type": "object", "additionalProperties": false, "required": ["type", "from", "to", "properties"],
+      "properties": {"type": {"const": "HAS_SUBCOMPONENT"}, "from": {"type": "string", "pattern": "^(C|SC)_[a-f0-9]{64}$"}, "to": {"type": "string", "pattern": "^SC_[a-f0-9]{64}$"}, "properties": {"$ref": "#/$defs/hierarchy_edge_properties"}}
+    },
+    "has_connection_edge": {
+      "type": "object", "additionalProperties": false, "required": ["type", "from", "to", "properties"],
+      "properties": {
+        "type": {"const": "HAS_CONNECTION"},
+        "from": {"type": "string", "pattern": "^(M|C|SC)_[a-f0-9]{64}$"},
+        "to": {"type": "string", "pattern": "^(M|C|SC)_[a-f0-9]{64}$"},
+        "properties": {
+          "type": "object", "additionalProperties": false, "required": ["connection_type", "confidence", "source"],
+          "properties": {
+            "connection_type": {"type": "string", "enum": ["pneumatic", "hydraulic", "planar_contact", "concentric", "tangent", "proximity"]},
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+            "source": {"type": "string", "enum": ["cad_geometry", "schematic", "manual"]}
+          }
+        }
+      }
+    },
+    "uses_error_code_edge": {
+      "type": "object", "additionalProperties": false, "required": ["type", "from", "to", "properties"],
+      "properties": {
+        "type": {"const": "USES_ERROR_CODE"},
+        "from": {"type": "string", "pattern": "^MR_[a-f0-9]{64}$"},
+        "to": {"type": "string", "pattern": "^EC_[a-f0-9]{64}$"},
+        "properties": {"$ref": "#/$defs/diagnostic_edge_properties"}
+      }
+    },
+    "observes_edge": {
+      "type": "object", "additionalProperties": false, "required": ["type", "from", "to", "properties"],
+      "properties": {
+        "type": {"const": "OBSERVES"},
+        "from": {"type": "string", "pattern": "^MR_[a-f0-9]{64}$"},
+        "to": {"type": "string", "pattern": "^PH_[a-f0-9]{64}$"},
+        "properties": {"$ref": "#/$defs/diagnostic_edge_properties"}
+      }
+    },
+    "scoped_to_edge": {
+      "type": "object", "additionalProperties": false, "required": ["type", "from", "to", "properties"],
+      "properties": {
+        "type": {"const": "SCOPED_TO"},
+        "from": {"type": "string", "pattern": "^MR_[a-f0-9]{64}$"},
+        "to": {"type": "string", "pattern": "^M_[a-f0-9]{64}$"},
+        "properties": {"$ref": "#/$defs/diagnostic_edge_properties"}
+      }
+    },
+    "asserts_cause_edge": {
+      "type": "object", "additionalProperties": false, "required": ["type", "from", "to", "properties"],
+      "properties": {
+        "type": {"const": "ASSERTS_CAUSE"},
+        "from": {"type": "string", "pattern": "^MR_[a-f0-9]{64}$"},
+        "to": {"type": "string", "pattern": "^CA_[a-f0-9]{64}$"},
+        "properties": {"$ref": "#/$defs/diagnostic_edge_properties"}
+      }
+    },
+    "recommends_action_edge": {
+      "type": "object", "additionalProperties": false, "required": ["type", "from", "to", "properties"],
+      "properties": {
+        "type": {"const": "RECOMMENDS_ACTION"},
+        "from": {"type": "string", "pattern": "^MR_[a-f0-9]{64}$"},
+        "to": {"type": "string", "pattern": "^AC_[a-f0-9]{64}$"},
+        "properties": {"$ref": "#/$defs/diagnostic_edge_properties"}
+      }
+    },
+    "has_step_edge": {
+      "type": "object", "additionalProperties": false, "required": ["type", "from", "to", "properties"],
+      "properties": {
+        "type": {"const": "HAS_STEP"},
+        "from": {"type": "string", "pattern": "^AC_[a-f0-9]{64}$"},
+        "to": {"type": "string", "pattern": "^AS_[a-f0-9]{64}$"},
+        "properties": {"$ref": "#/$defs/diagnostic_edge_properties"}
+      }
+    },
+    "replacement_for_edge": {
+      "type": "object", "additionalProperties": false, "required": ["type", "from", "to", "properties"],
+      "properties": {
+        "type": {"const": "REPLACEMENT_FOR"},
+        "from": {"type": "string", "pattern": "^RP_[a-f0-9]{64}$"},
+        "to": {"type": "string", "pattern": "^(M|C|SC)_[a-f0-9]{64}$"},
+        "properties": {"$ref": "#/$defs/diagnostic_edge_properties"}
+      }
+    },
+    "requires_part_edge": {
+      "type": "object", "additionalProperties": false, "required": ["type", "from", "to", "properties"],
+      "properties": {
+        "type": {"const": "REQUIRES_PART"},
+        "from": {"type": "string", "pattern": "^AC_[a-f0-9]{64}$"},
+        "to": {"type": "string", "pattern": "^RP_[a-f0-9]{64}$"},
+        "properties": {"$ref": "#/$defs/diagnostic_edge_properties"}
+      }
+    },
+    "diagnostic_edge": {"oneOf": [{"$ref": "#/$defs/uses_error_code_edge"}, {"$ref": "#/$defs/observes_edge"}, {"$ref": "#/$defs/scoped_to_edge"}, {"$ref": "#/$defs/asserts_cause_edge"}, {"$ref": "#/$defs/recommends_action_edge"}, {"$ref": "#/$defs/has_step_edge"}, {"$ref": "#/$defs/replacement_for_edge"}, {"$ref": "#/$defs/requires_part_edge"}]},
+    "edge": {"oneOf": [{"$ref": "#/$defs/has_module_edge"}, {"$ref": "#/$defs/has_component_edge"}, {"$ref": "#/$defs/has_subcomponent_edge"}, {"$ref": "#/$defs/has_connection_edge"}, {"$ref": "#/$defs/uses_error_code_edge"}, {"$ref": "#/$defs/observes_edge"}, {"$ref": "#/$defs/scoped_to_edge"}, {"$ref": "#/$defs/asserts_cause_edge"}, {"$ref": "#/$defs/recommends_action_edge"}, {"$ref": "#/$defs/has_step_edge"}, {"$ref": "#/$defs/replacement_for_edge"}, {"$ref": "#/$defs/requires_part_edge"}]},
+    "exclusion": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_native_id", "reason"],
+      "properties": {
+        "source_native_id": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "enum": ["missing_stable_native_id", "duplicate_canonical_id", "missing_parent", "multiple_parents", "self_parent", "cycle", "parent_mismatch", "cross_namespace_without_merge", "invalid_type", "other"]},
+        "detail": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

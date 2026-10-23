@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tpdx_v2_task016_review_label_v1",
+  "title": "V2-TASK016 independent review label (material / CAD)",
+  "description": "One object per domain-review label. See review_labels_guide.md for the independence, maturity, and leakage rules. Labels are domain-reviewer authored; this schema only validates their shape.",
+  "type": "object",
+  "required": [
+    "label_id",
+    "surface",
+    "scope",
+    "anchor",
+    "expected",
+    "decision",
+    "label_maturity",
+    "label_independence",
+    "leakage",
+    "reviewer",
+    "source_basis"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "label_id": {
+      "type": "string",
+      "pattern": "^(MAT|CAD)-[A-Za-z0-9_-]{3,32}$"
+    },
+    "surface": {
+      "type": "string",
+      "enum": ["material", "cad"]
+    },
+    "scope": {
+      "type": "string",
+      "description": "Candidate surface being labeled; see the applicability list in review_labels_guide.md."
+    },
+    "anchor": {
+      "type": "string",
+      "description": "Candidate/source anchor the label judges: source_anchor, replacement_part_id, drawing index key, or BOM row reference."
+    },
+    "expected": {
+      "type": "object",
+      "description": "Domain-truth value(s) for the anchor. Shape varies by scope; see review_labels_guide.md.",
+      "additionalProperties": true
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["accept", "reject", "replace", "abstain"]
+    },
+    "label_maturity": {
+      "type": "string",
+      "enum": [
+        "provisional",
+        "assumed_label_provisional",
+        "reviewed",
+        "adjudicated"
+      ]
+    },
+    "label_independence": {
+      "type": "object",
+      "required": ["labels_source", "derived_from_candidate"],
+      "additionalProperties": false,
+      "properties": {
+        "labels_source": {
+          "type": "string",
+          "description": "Who/what supplied the domain truth."
+        },
+        "derived_from_candidate": {
+          "type": "boolean",
+          "const": false,
+          "description": "Must be false: the expected value must never be transcribed from the candidate under review."
+        },
+        "overlap": {
+          "type": "boolean",
+          "description": "True when the labeling basis overlaps the candidate's co-source input; such labels are not independent corroboration."
+        }
+      }
+    },
+    "leakage": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "checked_clean",
+            "checked_with_note",
+            "not_applicable",
+            "unchecked"
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "reviewer": {
+      "type": "string",
+      "description": "Domain reviewer identity."
+    },
+    "source_basis": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      },
+      "description": "Independent evidence / anchors supporting the label."
+    },
+    "applicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "in_scope": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "note": {
+      "type": "string"
+    }
+  }
+}
