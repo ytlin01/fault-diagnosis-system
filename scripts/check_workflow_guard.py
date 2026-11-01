@@ -28,8 +28,8 @@ ACK_LINE = (
 )
 
 PLACEHOLDER_VALUES = {"", "tbd", "n/a", "na", "none", "unknown", "<fill me>"}
-V2_TASK_ID = re.compile(r"^V2-TASK\d{3}$")
-V2_TASK_PATH = re.compile(r"^docs/tasks/V2-TASK\d{3}_[^/]+/")
+V2_TASK_ID = re.compile(r"^(?:R1-TASK\d{2}|V2-TASK\d{3})$")
+V2_TASK_PATH = re.compile(r"^docs/tasks/(?:R1-TASK\d{2}|V2-TASK\d{3})_[^/]+/")
 
 
 def parse_args() -> argparse.Namespace:
@@ -130,12 +130,12 @@ def main() -> int:
         for status, path in changed_files
         if status != "D"
         and path.startswith("docs/tasks/")
-        and path != "docs/tasks/TASK_TEMPLATE.md"
+        and path not in {"docs/tasks/TASK_TEMPLATE.md", "docs/tasks/README.md"}
         and not V2_TASK_PATH.match(path)
     ]
     if invalid_task_paths:
         problems.append(
-            "Active task paths must use docs/tasks/V2-TASK###_<name>/: "
+            "Active task paths must use docs/tasks/R1-TASK##_<name>/ (historical V2-TASK### accepted): "
             + ", ".join(invalid_task_paths)
         )
 
@@ -159,7 +159,7 @@ def main() -> int:
         )
     elif not V2_TASK_ID.fullmatch(governance_task):
         problems.append(
-            "Protected workflow changes must name a Governance Task using V2-TASK###."
+            "Protected workflow changes must name a Governance Task using R1-TASK## (or a historical V2-TASK###)."
         )
 
     impact_summary = extract_field(pr_body, "Impact Summary")
@@ -185,3 +185,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

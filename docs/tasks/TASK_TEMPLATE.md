@@ -1,7 +1,7 @@
-# V2-TASK###_<name>
+# R1-TASK##_<name>
 
-> Copy this template to `docs/tasks/V2-TASK###_<name>/brief.md`, replacing
-> `###` with the next unused zero-padded sequence. Keep operational state in
+> Copy this template to `docs/tasks/R1-TASK##_<name>/brief.md`, replacing
+> `##` with the next unused zero-padded sequence. Keep operational state in
 > this task package; do not copy it into workflow or handoff documents.
 
 ## Identity
@@ -88,3 +88,4 @@ Place executable acceptance criteria in `acceptance.md`:
 
 Task notes are the authority for operational progress. Workflow documents,
 role guides, and handoff pages must not carry task priorities or status.
+

@@ -10,7 +10,7 @@ package defines what that role must do for one delivery.
 AGENTS.md
   -> data_engineering_workflow.md
       -> one role guide
-          -> V2-TASK###_<name>/{brief,acceptance,notes}.md
+          -> R1-TASK##_<name>/{brief,acceptance,notes}.md
 ```
 
 `AGENTS.md` sets branch safety and scope.
@@ -62,7 +62,7 @@ before every commit and every push.
 ## Operational state
 
 Current work never belongs in this directory. Record task scope and status only
-in the owning `docs/tasks/V2-TASK###_<name>/` package. Record
+in the owning `docs/tasks/R1-TASK##_<name>/` package. Record
 release-candidate delivery
 state only in its reviewed manifest.
 

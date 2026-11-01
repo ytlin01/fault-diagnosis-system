@@ -1,6 +1,6 @@
-﻿## Summary
+## Summary
 
-- Task: `V2-TASK###`
+- Task: `R1-TASK##`
 - Scope:
 
 ## Validation
@@ -14,5 +14,6 @@
 ## Workflow Guard
 
 - [ ] This PR intentionally changes protected workflow files and requires code owner review.
-- Governance Task: `V2-TASK###`
+- Governance Task: `R1-TASK##`
 - Impact Summary:
+

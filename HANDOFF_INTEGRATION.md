@@ -98,11 +98,13 @@ File names and metadata may be inspected only to scope the request safely.
 ## Where decisions live
 
 - Task progress, blockers, approvals, and follow-ups:
-  `docs/tasks/V2-TASK###_<name>/`.
+  `docs/tasks/R1-TASK##_<name>/`.
 - Historical task evidence: read-only packages under `legacy/tasks/`.
 - Contract and schema decisions: the governed contract/plan plus task evidence.
 - Data RC delivery status: the reviewed integration manifest.
 - System/runtime decisions: the N-owned system task and handoff.
+
+
 
 ## Public workflow documentation
 

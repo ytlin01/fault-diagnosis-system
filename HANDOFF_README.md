@@ -73,7 +73,7 @@ the permission request safely.
 ## Task and integration routing
 
 - Work scope, progress, blockers, decisions, and validation live in the owning
-  `docs/tasks/V2-TASK###_<name>/` package.
+  `docs/tasks/R1-TASK##_<name>/` package.
 - Historical `TASK-*` packages live under `legacy/tasks/` and are reference-only.
 - Contract and schema decisions live with their governed contract artifacts and
   task evidence.

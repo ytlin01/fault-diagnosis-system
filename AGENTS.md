@@ -135,12 +135,12 @@ The canonical governance store is:
 - Keep governance changes separate from schema, pipeline, KG, and evaluation implementation commits.
 - Do not treat a local brief, ignored file, or IDE tab as a tracked source of truth without verifying it exists on disk.
 - Do not allocate a task number when a possibly unsaved or missing task with that number has been reported.
-- New task identifiers use the zero-padded `V2-TASK###` convention. Allocate
-  them sequentially and never reuse a retired or historical identifier.
+- New task identifiers use the zero-padded `R1-TASK##` convention. Allocate
+  them sequentially from R1-TASK01 within release 1. Historical V2-TASK IDs remain reserved; never reuse an identifier within its namespace.
 
 ## Task and handoff contract
 
-Substantive work should use `docs/tasks/V2-TASK###_<name>/` after task identity
+Substantive work should use `docs/tasks/R1-TASK##_<name>/` after task identity
 and overlap are confirmed. Historical `TASK-*` packages are read-only records
 under `legacy/tasks/`; do not create new work there. Read active tasks in this
 order:
