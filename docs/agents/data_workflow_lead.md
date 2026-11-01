@@ -2,7 +2,7 @@
 
 ## Role
 
-Coordination owner for `feature/v2-data-pipeline`.
+Coordination owner for `r1-data`.
 
 ## Mission
 

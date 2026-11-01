@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This is the stable entry map for `feature/v2-data-pipeline`. It explains the
+This is the stable entry map for `r1-data`. It explains the
 branch boundary and points to the durable workflow. It does not record current
 priorities, task status, blockers, worktree state, release readiness, or dated
 progress.
@@ -47,8 +47,8 @@ scope, status, blockers, and evidence.
 - Use `code_review_agent` for independent implementation review. It is
   read-only by default and must ask the user separately before every commit and
   every push, even when the task or plan is already approved.
-- Its harness file and local task package are local-only and must never be
-  staged or uploaded to GitHub.
+- Reusable agent guides and sanitized handoffs may be committed. Local task
+  packages and private session artifacts remain excluded. See `HANDOFF.md`.
 
 ## Durable boundaries
 

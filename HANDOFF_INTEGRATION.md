@@ -3,8 +3,8 @@
 ## Purpose
 
 This document defines the stable integration boundary between
-`feature/v2-data-pipeline` (A/data line) and
-`feature/v2-system-upgrade` (N/system line).
+`r1-data` (A/data line) and
+`r1-system` (N/system line).
 
 It specifies what a future Data RC delivery must prove, what requires joint
 reconciliation, and what remains branch-local. It is not a live status ledger,
@@ -30,8 +30,8 @@ and the Data RC integration manifest.
   migration.
 - A full-branch merge is exceptional and requires Git-history and data-security
   review.
-- Do not create `integration/v2` before the applicable Data Contract Freeze and
-  Data RC gates are satisfied and authorized.
+- The `r1-integration` scaffold may exist before Data RC. Data activation still
+  requires the applicable Data Contract Freeze and Data RC gates.
 - Do not propagate branch-local workflow files or retired role definitions as
   default data payload.
 - Historical task documents may move only with the references required to
@@ -103,3 +103,9 @@ File names and metadata may be inspected only to scope the request safely.
 - Contract and schema decisions: the governed contract/plan plus task evidence.
 - Data RC delivery status: the reviewed integration manifest.
 - System/runtime decisions: the N-owned system task and handoff.
+
+## Public workflow documentation
+
+Reusable agent guides and sanitized handoffs are separately versioned project
+documentation, not data-package payload. Keep branch-specific authority intact.
+See HANDOFF.md for the public documentation change and its validation limits.

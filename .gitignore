@@ -85,10 +85,8 @@ artifacts/
 # Local session logs (machine-specific, not for git)
 docs/local/
 
-# Local-only Codex agent harness and task package; never stage or upload to GitHub.
+# Local task packages remain private; reusable reviewed guides may be versioned.
 # Existing tracked historical files are intentionally left untouched.
-.codex/agents/code_review_agent.toml
-docs/agents/code_review_agent.md
 docs/tasks/V2-TASK018_code_review_agent_workflow/
 
 # Local Claude settings
@@ -106,3 +104,6 @@ docs/onboarding/*.zip
 # Local reference work containing real device-layer data - never committed.
 # Registered in source_inventory.csv as local_reference sources; content stays local.
 reference_work/
+
+# Nested development worktrees are not repository payload.
+.worktrees/

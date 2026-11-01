@@ -1,7 +1,7 @@
 # Agent Guides
 
 This directory contains durable role instructions for
-`feature/v2-data-pipeline`. A role guide defines who owns a class of work; a task
+`r1-data`. A role guide defines who owns a class of work; a task
 package defines what that role must do for one delivery.
 
 ## Authority
@@ -49,7 +49,8 @@ task-status, and release writes require one explicit owner.
 
 ## Executable agents
 
-`.codex/agents/` contains repository-local Codex wrappers for the five roles.
+Executable wrappers under `.codex/agents/` are optional; this snapshot does not
+include them. The Markdown role guides are the published workflow instructions.
 They select defaults only; these Markdown guides remain authoritative for scope,
 gates, handoffs, and effort escalation. Changes to this directory and
 `HANDOFF_INTEGRATION.md` are protected workflow changes.

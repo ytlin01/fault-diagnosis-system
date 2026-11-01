@@ -2,9 +2,9 @@
 
 ## Repository and branch identity
 
-On `feature/v2-data-pipeline`, this repository is the A-owned v2 data source line. It is responsible for governed data engineering and knowledge-graph delivery.
+On `r1-data`, this repository is the A-owned v2 data source line. It is responsible for governed data engineering and knowledge-graph delivery.
 
-This branch is not the v2 system or release authority. It must not become a second source of truth for system architecture, UI, runtime, providers, deployment, or the global release handoff. Its intended destination is a temporary `integration/v2` branch after Data Contract Freeze and Data Release Candidate review.
+This branch is not the v2 system or release authority. It must not become a second source of truth for system architecture, UI, runtime, providers, deployment, or the global release handoff. Its intended destination is a temporary `r1-integration` branch after Data Contract Freeze and Data Release Candidate review.
 
 `Faultdx_ref/` is reference-only. Never copy its code or data into this repository without explicit design review and manual reimplementation.
 
@@ -46,7 +46,7 @@ Out of scope unless separately authorized:
 - global API/result design, routing, answer assembly, prompt, or runtime redesign;
 - UI, provider, deployment, machine migration, or release packaging;
 - repository-wide cleanup of inherited v1 application files;
-- direct development on `main` or creation of `integration/v2` before Data RC;
+- application development on `main` or data activation in `r1-integration` before Data RC; release documentation and integration scaffolding are permitted;
 - complete merge of this branch without Git-history and data-security review.
 
 Inherited out-of-scope files are `carried / non-authoritative / do not modify`, not cleanup targets.
@@ -93,11 +93,12 @@ read-only by default. It must ask the user for explicit permission immediately
 before every commit and again before every push. Task approval, plan approval,
 or permission for one Git action does not authorize another commit or push.
 
-The agent harness structure and local agent task packages are local-only
-working materials. They must not be staged, committed, pushed, or uploaded to
-GitHub. The current local code-review harness and `V2-TASK018` package have not
-been uploaded; if a future check finds either in a staged or committed change,
-remove those scoped artifacts immediately before any Git operation.
+Reusable agent instructions, role guides, and sanitized handoff documents are
+versioned public project documentation. Review their exact contents before
+publication. Local task packages, session transcripts, private source details,
+credentials, machine-specific settings, and runtime artifacts remain excluded.
+Publishing workflow instructions does not prove that an agent executed them or
+that independent review or release approval occurred.
 
 ## Canonical governance storage
 
